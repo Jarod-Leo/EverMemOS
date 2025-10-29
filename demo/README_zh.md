@@ -62,7 +62,11 @@ uv run python src/bootstrap.py demo/chat_with_memory.py
 
 ### 记忆提取
 
-提取脚本处理 `data/` 目录中的 JSON 文件（在 `memory_config.py` 的 `ExtractModeConfig` 中配置）。请确保您的对话文件遵循 [GroupChatFormat](../data_format/group_chat/group_chat_format.md) 规范。为了方便，我们为您提供了示例数据文件 [group_chat.json](../data/group_chat.json) 和 [assistant_chat.json](../data/assistant_chat.json) 用于快速开始，详情请查看[数据说明文档](../data/README_zh.md)。
+提取脚本处理 `data/` 目录中的 JSON 文件（在 `memory_config.py` 的 `ExtractModeConfig` 中配置）。请确保您的对话文件遵循 [GroupChatFormat](../data_format/group_chat/group_chat_format.md) 规范。为了方便，我们为您提供了双语示例数据文件：
+- **英文版本：**[group_chat_en.json](../data/group_chat_en.json) 和 [assistant_chat_en.json](../data/assistant_chat_en.json)
+- **中文版本：**[group_chat_zh.json](../data/group_chat_zh.json) 和 [assistant_chat_zh.json](../data/assistant_chat_zh.json)
+
+详情请查看[数据说明文档](../data/README_zh.md)。
 
 ### 交互式聊天
 
@@ -103,7 +107,7 @@ demo/memcell_outputs/
 
 ## 📖 演示数据说明
 
-### 群聊场景 (group_chat.json)
+### 群聊场景 (group_chat_en.json / group_chat_zh.json)
 
 **项目背景：** AI 产品工作群，记录团队开发"智能销售助手"的完整历程
 
@@ -112,9 +116,11 @@ demo/memcell_outputs/
 - 高级功能迭代：情绪识别、记忆系统
 - 团队协作实践：从需求到交付的完整流程
 
+**可用语言：** 英文和中文版本
+
 **适合探索：** 团队协作模式、项目管理、技术方案演进
 
-### 助手场景 (assistant_chat.json)
+### 助手场景 (assistant_chat_en.json / assistant_chat_zh.json)
 
 **对话背景：** 个人健康与生活助手，记录近 2 个月的连续交互
 
@@ -122,6 +128,8 @@ demo/memcell_outputs/
 - 旅行规划：美食推荐、行程建议
 - 健康管理：体重监测、饮食指导
 - 运动康复：训练建议、伤后恢复
+
+**可用语言：** 英文和中文版本
 
 **适合探索：** 个性化服务、长期记忆积累、上下文理解
 

@@ -63,7 +63,11 @@ Features:
 
 ### Memory Extraction
 
-The extraction script processes JSON files in the `data/` directory (configured in `ExtractModeConfig` in `memory_config.py`). Ensure your conversation files follow the [GroupChatFormat](../data_format/group_chat/group_chat_format.md) specification. For convenience, we provide sample data files [group_chat.json](../data/group_chat.json) and [assistant_chat.json](../data/assistant_chat.json) for quick start. See the [data documentation](../data/README.md) for details.
+The extraction script processes JSON files in the `data/` directory (configured in `ExtractModeConfig` in `memory_config.py`). Ensure your conversation files follow the [GroupChatFormat](../data_format/group_chat/group_chat_format.md) specification. For convenience, we provide bilingual sample data files:
+- **English versions:** [group_chat_en.json](../data/group_chat_en.json) and [assistant_chat_en.json](../data/assistant_chat_en.json)
+- **Chinese versions:** [group_chat_zh.json](../data/group_chat_zh.json) and [assistant_chat_zh.json](../data/assistant_chat_zh.json)
+
+See the [data documentation](../data/README.md) for details.
 
 ### Interactive Chat
 
@@ -104,7 +108,7 @@ demo/memcell_outputs/
 
 ## 📖 Demo Data Overview
 
-### Group Chat Scenario (group_chat.json)
+### Group Chat Scenario (group_chat_en.json / group_chat_zh.json)
 
 **Project Context:** AI product work group documenting the complete development journey of "Smart Sales Assistant"
 
@@ -113,9 +117,11 @@ demo/memcell_outputs/
 - Advanced feature iteration: Emotion recognition, memory system
 - Team collaboration practices: Complete workflow from requirements to delivery
 
+**Available in:** English and Chinese versions
+
 **Good for exploring:** Team collaboration patterns, project management, technical solution evolution
 
-### Assistant Scenario (assistant_chat.json)
+### Assistant Scenario (assistant_chat_en.json / assistant_chat_zh.json)
 
 **Conversation Context:** Personal health & lifestyle assistant documenting nearly 2 months of continuous interaction
 
@@ -123,6 +129,8 @@ demo/memcell_outputs/
 - Travel planning: Food recommendations, itinerary suggestions
 - Health management: Weight monitoring, dietary guidance
 - Exercise recovery: Training advice, post-injury rehabilitation
+
+**Available in:** English and Chinese versions
 
 **Good for exploring:** Personalized services, long-term memory accumulation, contextual understanding
 
