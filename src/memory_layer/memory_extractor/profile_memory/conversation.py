@@ -3,29 +3,38 @@
 from __future__ import annotations
 
 import calendar
+import json
 import re
 from datetime import date, datetime, timedelta
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from core.observation.logger import get_logger
 
+from ...prompts.en.profile_mem_evidence_completion_prompt import (
+    CONVERSATION_PROFILE_EVIDENCE_COMPLETION_PROMPT,
+)
 from ...types import MemCell
-from .types import GroupImportanceEvidence, ImportanceEvidence
+from .types import GroupImportanceEvidence, ImportanceEvidence, ProfileMemoryExtractRequest
 
 logger = get_logger(__name__)
 
 
-def extract_user_mapping_from_memcells(memcells: Iterable[MemCell]) -> Dict[str, str]:
-    """Extract user_id to user_name mapping from a list of memcells.
+def extract_user_mapping_from_memcells(
+    memcells: Iterable[MemCell],
+    old_memory_list: Optional[Iterable[Any]] = None,
+) -> Dict[str, str]:
+    """Extract user_id to user_name mapping from memcells and old memories.
 
     Args:
         memcells: Iterable of MemCell objects
+        old_memory_list: Optional iterable of Memory objects (ProfileMemory, etc.)
 
     Returns:
         Dictionary mapping user_id (str) to user_name (str)
     """
     user_id_to_name: Dict[str, str] = {}
 
+    # Extract from memcells (speaker info only, referList has no name)
     for memcell in memcells:
         data_list: List[Any] = getattr(memcell, "original_data", []) or []
 
@@ -36,22 +45,26 @@ def extract_user_mapping_from_memcells(memcells: Iterable[MemCell]) -> Dict[str,
             if speaker_id and speaker_name:
                 user_id_to_name[str(speaker_id)] = speaker_name
 
-            # Extract referList info
-            refer_list = data.get("referList", [])
-            if isinstance(refer_list, list):
-                for refer in refer_list:
-                    if not isinstance(refer, dict):
-                        continue
-                    refer_id = refer.get("_id") or refer.get("id")
-                    refer_name = refer.get("name")
-                    if refer_id and refer_name:
-                        user_id_to_name[str(refer_id)] = refer_name
+            # Note: referList only has id, no name field, so we skip it
+
+    # Extract from old_memory_list (ProfileMemory, BaseMemory, etc.)
+    if old_memory_list:
+        for memory in old_memory_list:
+            user_id = getattr(memory, "user_id", None)
+            user_name = getattr(memory, "user_name", None)
+            if user_id and user_name:
+                # Only add if not already present (memcells data takes priority)
+                if str(user_id) not in user_id_to_name:
+                    user_id_to_name[str(user_id)] = user_name
 
     return user_id_to_name
 
 
 def _append_user_ids_to_content(
-    content: Any, refer_list: Any, *, use_at_symbol: bool = True
+    content: Any,
+    refer_list: Any,
+    *,
+    use_at_symbol: bool = True,
 ) -> Any:
     """Generic function to append user IDs to name mentions in content.
 
@@ -100,7 +113,8 @@ def _append_user_ids_to_content(
 
         # Apply the substitution
         updated_content, count = pattern.subn(
-            lambda match: replacement, updated_content
+            lambda match: replacement,
+            updated_content,
         )
         if count:
             processed_names.add(name)
@@ -119,7 +133,8 @@ def append_user_ids_to_names(content: Any, refer_list: Any) -> Any:
 
 
 def build_conversation_text(
-    memcell: MemCell, user_id_to_name: Dict[str, str]
+    memcell: MemCell,
+    user_id_to_name: Dict[str, str],
 ) -> Tuple[str, Optional[str]]:
     """Convert raw data from a memcell into formatted conversation text.
 
@@ -143,10 +158,11 @@ def build_conversation_text(
         if not speaker_name and speaker_id:
             speaker_name = user_id_to_name.get(str(speaker_id), "")
 
-        speaker = (
-            f"{speaker_name}(user_id:{speaker_id})" if speaker_id else speaker_name
+        speaker = f"{speaker_name}(user_id:{speaker_id})" if speaker_id else speaker_name
+        content = append_refer_user_ids(
+            data.get("content"),
+            data.get("referList"),
         )
-        content = append_refer_user_ids(data.get("content"), data.get("referList"))
         timestamp = data.get("timestamp")
 
         if timestamp:
@@ -162,7 +178,8 @@ def build_conversation_text(
 
 
 def build_episode_text(
-    memcell: MemCell, user_id_to_name: Dict[str, str]
+    memcell: MemCell,
+    user_id_to_name: Dict[str, str],
 ) -> Tuple[str, Optional[str]]:
     """Convert episode from a memcell into formatted text with user_id annotations.
 
@@ -196,25 +213,30 @@ def build_episode_text(
 
     # Format with timestamp and event_id
     timestamp = getattr(memcell, "timestamp", None)
-    return (
-        f"[{timestamp}][episode_id:{event_id_str}] {annotated_content}",
-        event_id_str or None,
-    )
+    return f"[{timestamp}][episode_id:{event_id_str}] {annotated_content}", event_id_str or None
 
 
-def annotate_relative_dates(text: str, *, default_date: Optional[str]) -> str:
-    """Append absolute dates after relative date phrases in the LLM response."""
-    if not text or not default_date:
+def annotate_relative_dates(text: str, base_date: Optional[str] = None) -> str:
+    """Append absolute dates after relative date phrases in the LLM response.
+
+    Args:
+        text: The text to annotate
+        base_date: ISO format date string (YYYY-MM-DD) to use as reference point
+
+    Returns:
+        Text with relative dates annotated with absolute dates
+    """
+    if not text or not base_date:
         return text
 
     try:
-        base_date = datetime.fromisoformat(default_date).date()
+        reference_date = datetime.fromisoformat(base_date).date()
     except ValueError:
         return text
 
     def month_end(offset: int) -> date:
-        year = base_date.year
-        month = base_date.month + offset
+        year = reference_date.year
+        month = reference_date.month + offset
         while month < 1:
             month += 12
             year -= 1
@@ -232,12 +254,12 @@ def annotate_relative_dates(text: str, *, default_date: Optional[str]) -> str:
         return month_end(offset)
 
     english_rules = {
-        "today": lambda: base_date,
-        "tomorrow": lambda: base_date + timedelta(days=1),
-        "yesterday": lambda: base_date - timedelta(days=1),
-        "this week": lambda: base_date,
-        "last week": lambda: base_date - timedelta(days=7),
-        "next week": lambda: base_date + timedelta(days=7),
+        "today": lambda: reference_date,
+        "tomorrow": lambda: reference_date + timedelta(days=1),
+        "yesterday": lambda: reference_date - timedelta(days=1),
+        "this week": lambda: reference_date,
+        "last week": lambda: reference_date - timedelta(days=7),
+        "next week": lambda: reference_date + timedelta(days=7),
         "this month": lambda: compute_month(0),
         "last month": lambda: compute_month(-1),
         "next month": lambda: compute_month(1),
@@ -246,6 +268,7 @@ def annotate_relative_dates(text: str, *, default_date: Optional[str]) -> str:
     chinese_rules = {
         "今天": english_rules["today"],
         "明天": english_rules["tomorrow"],
+        "第二天": english_rules["tomorrow"],
         "昨天": english_rules["yesterday"],
         "本周": english_rules["this week"],
         "这周": english_rules["this week"],
@@ -261,9 +284,7 @@ def annotate_relative_dates(text: str, *, default_date: Optional[str]) -> str:
         r"\b(today|tomorrow|yesterday|this week|last week|next week|this month|last month|next month)\b",
         re.IGNORECASE,
     )
-    chinese_pattern = re.compile(
-        "(今天|明天|昨天|本周|这周|上周|下周|本月|这个月|上个月|下个月)"
-    )
+    chinese_pattern = re.compile("(今天|明天|昨天|本周|这周|上周|下周|本月|这个月|上个月|下个月)")
 
     def english_repl(match: re.Match[str]) -> str:
         original = match.group(0)
@@ -291,9 +312,7 @@ def annotate_relative_dates(text: str, *, default_date: Optional[str]) -> str:
     return updated_text
 
 
-def extract_group_important_info(
-    memcells: Iterable[MemCell], group_id: str
-) -> Dict[str, Any]:
+def extract_group_important_info(memcells: Iterable[MemCell], group_id: str) -> Dict[str, Any]:
     """Aggregate statistics used to determine user importance within a group."""
     group_data = {
         "group_id": group_id,
@@ -370,6 +389,8 @@ def merge_group_importance_evidence(
         return None
 
     if not existing_evidence:
+        if not matching_evidence:
+            return None
         return GroupImportanceEvidence(
             group_id=matching_evidence.group_id,
             evidence_list=[matching_evidence],
@@ -383,3 +404,42 @@ def merge_group_importance_evidence(
     if len(existing_evidence.evidence_list) > 10:
         existing_evidence.evidence_list = existing_evidence.evidence_list[:10]
     return existing_evidence
+
+
+def build_profile_prompt(
+    prompt_template: str,
+    conversation_lines: List[str],
+    participants_profile_list_no_evidences: List[Dict[str, Any]],
+    participants_base_memory_map: Dict[str, Dict[str, Any]],
+    request: ProfileMemoryExtractRequest,
+) -> str:
+    """Construct a profile extraction prompt using shared conversation context."""
+    return (
+        prompt_template.replace("{conversation}", "\n".join(conversation_lines))
+        .replace(
+            "{participants_profile}",
+            json.dumps(participants_profile_list_no_evidences, ensure_ascii=False),
+        )
+        .replace(
+            "{participants_baseMemory}",
+            json.dumps(participants_base_memory_map, ensure_ascii=False),
+        )
+        .replace("{project_name}", request.group_name or "")
+        .replace("{project_id}", request.group_id or "")
+    )
+
+
+def build_evidence_completion_prompt(
+    conversation_text: str,
+    profiles_without_evidences: List[Dict[str, Any]],
+) -> str:
+    """Construct the evidence completion prompt for a batch of user profiles."""
+    return (
+        CONVERSATION_PROFILE_EVIDENCE_COMPLETION_PROMPT.replace(
+            "{conversation}",
+            conversation_text,
+        ).replace(
+            "{user_profiles_without_evidences}",
+            json.dumps(profiles_without_evidences, ensure_ascii=False),
+        )
+    )

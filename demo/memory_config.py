@@ -194,9 +194,9 @@ class ExtractModeConfig:
             data_dir = project_root / "data"
 
             if self.scenario_type == ScenarioType.ASSISTANT:
-                self.data_file = data_dir / "assistant_chat.json"
+                self.data_file = data_dir / "assistant_chat_zh.json"
             elif self.scenario_type == ScenarioType.GROUP_CHAT:
-                self.data_file = data_dir / "group_chat.json"
+                self.data_file = data_dir / "group_chat_zh.json"
 
         # 根据场景类型自动调整输出目录
         # 为不同场景创建独立的子目录，避免数据混乱

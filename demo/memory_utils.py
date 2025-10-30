@@ -44,7 +44,7 @@ if project_root not in sys.path:
 from src.infra_layer.adapters.out.persistence.document.memory.memcell import (
     MemCell as DocMemCell,
 )
-from memory_config import MongoDBConfig, EmbeddingConfig
+from demo.memory_config import MongoDBConfig, EmbeddingConfig
 
 
 def cosine_similarity(vec1, vec2):

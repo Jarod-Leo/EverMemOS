@@ -53,17 +53,13 @@ class ProfileMemory(Memory):
 
     user_name: Optional[str] = None
 
-    # Skills: [{"skill": "Python", "level": "高级", "evidences": ["2024-01-01|conv_123"]}]
+    # Skills: [{"value": "Python", "level": "高级", "evidences": ["2024-01-01|conv_123"]}]
+    # Legacy format: [{"skill": "Python", "level": "高级", "evidences": ["..."]}]
     hard_skills: Optional[List[Dict[str, Any]]] = None
     soft_skills: Optional[List[Dict[str, Any]]] = None
 
     output_reasoning: Optional[str] = None
-    # Motivational attributes: [{"value": "achievement", "level": "high", "evidences": ["2024-01-01|conv_123"]}]
-    motivation_system: Optional[List[Dict[str, Any]]] = None
-    fear_system: Optional[List[Dict[str, Any]]] = None
-    value_system: Optional[List[Dict[str, Any]]] = None
-    humor_use: Optional[List[Dict[str, Any]]] = None
-    colloquialism: Optional[List[Dict[str, Any]]] = None
+    
 
     # Other attributes: [{"value": "xxx", "evidences": ["2024-01-01|conv_123"]}]
     way_of_decision_making: Optional[List[Dict[str, Any]]] = None
@@ -74,6 +70,13 @@ class ProfileMemory(Memory):
     working_habit_preference: Optional[List[Dict[str, Any]]] = None
     interests: Optional[List[Dict[str, Any]]] = None
     tendency: Optional[List[Dict[str, Any]]] = None
+    
+    # Motivational attributes: [{"value": "achievement", "level": "high", "evidences": ["2024-01-01|conv_123"]}]
+    motivation_system: Optional[List[Dict[str, Any]]] = None
+    fear_system: Optional[List[Dict[str, Any]]] = None
+    value_system: Optional[List[Dict[str, Any]]] = None
+    humor_use: Optional[List[Dict[str, Any]]] = None
+    colloquialism: Optional[List[Dict[str, Any]]] = None
 
     group_importance_evidence: Optional[GroupImportanceEvidence] = None
 
@@ -81,29 +84,6 @@ class ProfileMemory(Memory):
         """Ensure the memory type is set to PROFILE."""
         self.memory_type = MemoryType.PROFILE
         super().__post_init__()
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "user_id": self.user_id,
-            "user_name": self.user_name,
-            "hard_skills": self.hard_skills,
-            "soft_skills": self.soft_skills,
-            "output_reasoning": self.output_reasoning,
-            "motivation_system": self.motivation_system,
-            "fear_system": self.fear_system,
-            "value_system": self.value_system,
-            "humor_use": self.humor_use,
-            "colloquialism": self.colloquialism,
-            "way_of_decision_making": self.way_of_decision_making,
-            "personality": self.personality,
-            "projects_participated": self.projects_participated,
-            "user_goal": self.user_goal,
-            "work_responsibility": self.work_responsibility,
-            "working_habit_preference": self.working_habit_preference,
-            "interests": self.interests,
-            "tendency": self.tendency,
-            "group_importance_evidence": self.group_importance_evidence,
-        }
 
 
 @dataclass

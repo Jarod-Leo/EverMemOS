@@ -32,8 +32,8 @@ if str(PROJECT_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT / "src"))
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.memory_layer.memcell_extractor.base_memcell_extractor import RawData
-from src.memory_layer.memcell_extractor.conv_memcell_extractor_with_cluster import (
+from memory_layer.memcell_extractor.base_memcell_extractor import RawData
+from memory_layer.memcell_extractor.conv_memcell_extractor_with_cluster import (
     ConvMemCellExtractorWithCluster as ConvMemCellExtractor,
     ConversationMemCellExtractRequest,
 )
@@ -47,20 +47,20 @@ from src.memory_layer.memory_extractor.profile_memory_extractor import (
     ProfileMemoryExtractor,
     ProfileMemoryExtractRequest,
 )
-from profile_extractor import ValueDiscriminatorCompanion, DiscriminatorCompanionConfig
+from demo.profile_extractor import ValueDiscriminatorCompanion, DiscriminatorCompanionConfig
 from beanie import init_beanie
 from motor.motor_asyncio import AsyncIOMotorClient
 from dotenv import load_dotenv
 
 # 导入共享配置和工具
-from memory_config import (
+from demo.memory_config import (
     RunMode,
     ScenarioType,
     ExtractModeConfig,
     LLMConfig,
     MongoDBConfig,
 )
-from memory_utils import (
+from demo.memory_utils import (
     ensure_mongo_beanie_ready,
     serialize_datetime,
     PerformanceMetrics,
@@ -92,8 +92,8 @@ CURRENT_RUN_MODE = RunMode.EXTRACT_ALL  # ✅ 完整提取：MemCell + Profile
 
 # 提取配置
 EXTRACT_CONFIG = ExtractModeConfig(
-    # scenario_type=ScenarioType.GROUP_CHAT,
-    scenario_type=ScenarioType.ASSISTANT,
+    scenario_type=ScenarioType.GROUP_CHAT,
+    # scenario_type=ScenarioType.ASSISTANT,
     enable_profile_extraction=True,
 )
 
@@ -548,6 +548,8 @@ async def _save_memcell_to_mongodb(memcell) -> None:
         )
         await doc.insert()
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"[MongoDB] ⚠️ 保存 MemCell 失败: {e}")
 
 
