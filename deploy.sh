@@ -85,14 +85,14 @@ create_directories() {
     print_success "目录创建完成"
 }
 
-# 启动服务
+# 启动依赖服务（应用本地运行）
 start_services() {
-    print_info "启动服务..."
+    print_info "启动依赖服务..."
     
-    # 构建并启动服务
-    docker-compose up -d --build
+    # 启动依赖服务（不包含应用，不包含 PostgreSQL）
+    docker-compose up -d mongodb elasticsearch milvus-etcd milvus-minio milvus-standalone redis
     
-    print_success "服务启动完成"
+    print_success "依赖服务启动完成"
 }
 
 # 等待服务就绪
@@ -111,10 +111,6 @@ wait_for_services() {
     print_info "等待 Redis..."
     timeout 30 bash -c 'until docker-compose exec -T redis redis-cli ping > /dev/null 2>&1; do sleep 2; done'
     
-    # 等待 PostgreSQL
-    print_info "等待 PostgreSQL..."
-    timeout 30 bash -c 'until docker-compose exec -T postgresql pg_isready -U memsys -d memsys > /dev/null 2>&1; do sleep 2; done'
-    
     # 等待 Milvus
     print_info "等待 Milvus..."
     timeout 120 bash -c 'until curl -f http://localhost:9091/healthz > /dev/null 2>&1; do sleep 5; done'
@@ -129,18 +125,17 @@ show_status() {
     
     echo
     print_info "服务访问地址："
-    print_info "  - Memsys 应用: http://localhost:1995"
+    print_info "  - 本地运行的 Memsys 应用: http://localhost:1995"
     print_info "  - Elasticsearch: http://localhost:9200"
     print_info "  - Milvus MinIO 控制台: http://localhost:9001"
     print_info "  - MongoDB: localhost:27017"
     print_info "  - Redis: localhost:6379"
-    print_info "  - PostgreSQL: localhost:5432"
 }
 
 # 显示日志
 show_logs() {
-    print_info "显示应用日志 (按 Ctrl+C 退出)..."
-    docker-compose logs -f memsys-app
+    print_info "应用在本地运行，请使用本地日志方式查看。例如："
+    print_info "  uv run python run.py"
 }
 
 # 停止服务
@@ -234,3 +229,4 @@ main() {
 
 # 执行主函数
 main "$@"
+
