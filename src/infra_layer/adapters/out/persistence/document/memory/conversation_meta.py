@@ -20,8 +20,8 @@ class UserDetailModel(BaseModel):
     """
 
     full_name: str = Field(..., description="用户全名")
-    role: str = Field(..., description="用户角色，如：用户、助手、管理员等")
-    extra: Dict[str, Any] = Field(default_factory=dict, description="扩展字段，支持动态schema")
+    role: Optional[str] = Field(default=None, description="用户角色，如：用户、助手、管理员等")
+    extra: Optional[Dict[str, Any]] = Field(default=None, description="扩展字段，支持动态schema")
 
 
 class ConversationMeta(DocumentBase, AuditBase):
@@ -43,12 +43,12 @@ class ConversationMeta(DocumentBase, AuditBase):
 
     # 对话基本信息
     name: str = Field(..., description="对话名称")
-    description: str = Field(..., description="对话描述")
+    description: Optional[str] = Field(default=None, description="对话描述")
     group_id: Indexed(str) = Field(..., description="群组ID，用于关联同一组对话")
 
     # 时间信息
     conversation_created_at: str = Field(..., description="对话创建时间，ISO格式字符串")
-    default_timezone: str = Field(
+    default_timezone: Optional[str] = Field(
         default="Asia/Shanghai", description="默认时区，如：Asia/Shanghai"
     )
 
