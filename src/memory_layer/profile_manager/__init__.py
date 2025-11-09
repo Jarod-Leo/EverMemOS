@@ -40,6 +40,7 @@ from memory_layer.profile_manager.storage import (
     ProfileStorage,
     InMemoryProfileStorage,
 )
+from memory_layer.profile_manager.mongo_profile_storage import MongoProfileStorage
 
 __all__ = [
     "ProfileManager",
@@ -49,5 +50,6 @@ __all__ = [
     "DiscriminatorConfig",
     "ProfileStorage",
     "InMemoryProfileStorage",
+    "MongoProfileStorage",
 ]
 

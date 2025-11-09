@@ -255,8 +255,20 @@ class ClusterManager:
         """
         self._stats["total_memcells"] += 1
         
-        # Get or create state for this group
-        state = self._states.setdefault(group_id, ClusterState())
+        # Get or load state for this group
+        if group_id not in self._states:
+            # Try to load from storage first
+            stored_state = await self._storage.load_cluster_state(group_id)
+            if stored_state:
+                # Restore state from storage
+                self._states[group_id] = ClusterState.from_dict(stored_state)
+                logger.debug(f"Loaded cluster state for group {group_id} from storage")
+            else:
+                # Create new state
+                self._states[group_id] = ClusterState()
+                logger.debug(f"Created new cluster state for group {group_id}")
+        
+        state = self._states[group_id]
         
         # Extract key fields
         event_id = str(memcell.get("event_id", ""))

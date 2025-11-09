@@ -36,11 +36,13 @@ from memory_layer.cluster_manager.storage import (
     ClusterStorage,
     InMemoryClusterStorage,
 )
+from memory_layer.cluster_manager.mongo_cluster_storage import MongoClusterStorage
 
 __all__ = [
     "ClusterManager",
     "ClusterManagerConfig",
     "ClusterStorage",
     "InMemoryClusterStorage",
+    "MongoClusterStorage",
 ]
 

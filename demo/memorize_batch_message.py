@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import httpx
 
-from demo.clear_all_data import clear_all_memories
+from demo.tools.clear_all_data import clear_all_memories
 
 
 def load_conversation_data(file_path: str) -> tuple:
@@ -57,25 +57,27 @@ async def test_v3_memorize_api():
     print("=" * 100)
     
     # 加载真实对话数据
-    data_file = "/Users/admin/Documents/Projects/opensource/memsys-opensource/data/assistant_chat_zh.json"
-    try:
-        test_messages, group_id, group_name = load_conversation_data(data_file)
-    except FileNotFoundError as e:
-        print(f"❌ 错误: {e}")
-        return False
+    data_file = "data/assistant_chat_zh.json"
+
+    test_messages, group_id, group_name = load_conversation_data(data_file)
     
-    if not test_messages:
-        print("❌ 没有找到消息数据")
-        return False
+    # ✨ 配置 Profile 提取场景
+    # "assistant" / "companion" -> 陪伴场景（提取兴趣、偏好、生活习惯）
+    # "group_chat" / "work" / "company" / None -> 工作/群聊场景（提取工作角色、技能、项目经验）
+    profile_scene = "assistant"  # 💡 根据实际场景修改这里
     
     print(f"\n📤 准备发送 {len(test_messages)} 条消息到 V3 API")
     print(f"   URL: {memorize_url}")
+    print(f"   Profile 场景: {profile_scene}")
     print()
     
     # 逐条发送消息（增加超时时间到120秒，因为LLM调用可能需要时间）
     async with httpx.AsyncClient(timeout=180.0) as client:
         for idx, message in enumerate(test_messages, 1):
             print(f"[{idx}/{len(test_messages)}] 发送消息: {message['sender']} - {message['content'][:30]}...")
+            
+            # 为每条消息添加 scene 字段
+            message['scene'] = profile_scene
             
             try:
                 response = await client.post(

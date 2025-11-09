@@ -8,6 +8,8 @@ from infra_layer.adapters.out.persistence.document.memory.episodic_memory import
 from infra_layer.adapters.out.persistence.document.memory.personal_semantic_memory import PersonalSemanticMemory
 from infra_layer.adapters.out.persistence.document.memory.personal_event_log import PersonalEventLog
 from infra_layer.adapters.out.persistence.document.memory.conversation_status import ConversationStatus
+from infra_layer.adapters.out.persistence.document.memory.cluster_state import ClusterState
+from infra_layer.adapters.out.persistence.document.memory.user_profile import UserProfile
 from infra_layer.adapters.out.search.milvus.memory.episodic_memory_collection import EpisodicMemoryCollection
 from core.di import get_bean_by_type
 from component.redis_provider import RedisProvider
@@ -32,12 +34,16 @@ async def clear_all_memories(verbose: bool = True):
         semantic_count = await PersonalSemanticMemory.find_all().count()
         eventlog_count = await PersonalEventLog.find_all().count()
         status_count = await ConversationStatus.find_all().count()
+        cluster_count = await ClusterState.find_all().count()
+        profile_count = await UserProfile.find_all().count()
         
         await MemCell.find_all().delete()
         await EpisodicMemory.find_all().delete()
         await PersonalSemanticMemory.find_all().delete()
         await PersonalEventLog.find_all().delete()
         await ConversationStatus.find_all().delete()
+        await ClusterState.find_all().delete()
+        await UserProfile.find_all().delete()
         
         if verbose:
             print(f"      ✅ MemCell: {memcell_count} 条")
@@ -45,6 +51,8 @@ async def clear_all_memories(verbose: bool = True):
             print(f"      ✅ PersonalSemanticMemory: {semantic_count} 条")
             print(f"      ✅ PersonalEventLog: {eventlog_count} 条")
             print(f"      ✅ ConversationStatus: {status_count} 条")
+            print(f"      ✅ ClusterState: {cluster_count} 条")
+            print(f"      ✅ UserProfile: {profile_count} 条")
         
         # 2. 清空 Milvus
         if verbose:
@@ -160,8 +168,11 @@ async def clear_all_memories(verbose: bool = True):
             remaining_semantic = await PersonalSemanticMemory.find_all().count()
             remaining_eventlog = await PersonalEventLog.find_all().count()
             remaining_status = await ConversationStatus.find_all().count()
+            remaining_cluster = await ClusterState.find_all().count()
+            remaining_profile = await UserProfile.find_all().count()
             
-            mongodb_total = remaining_memcell + remaining_episode + remaining_semantic + remaining_eventlog + remaining_status
+            mongodb_total = (remaining_memcell + remaining_episode + remaining_semantic + 
+                           remaining_eventlog + remaining_status + remaining_cluster + remaining_profile)
             
             if mongodb_total == 0:
                 print(f"   ✅ MongoDB: 0 条记录")
@@ -177,6 +188,10 @@ async def clear_all_memories(verbose: bool = True):
                     print(f"      - PersonalEventLog: {remaining_eventlog} 条")
                 if remaining_status > 0:
                     print(f"      - ConversationStatus: {remaining_status} 条")
+                if remaining_cluster > 0:
+                    print(f"      - ClusterState: {remaining_cluster} 条")
+                if remaining_profile > 0:
+                    print(f"      - UserProfile: {remaining_profile} 条")
             
             # 2. 验证 Milvus (检查Collection中的数据量)
             try:
@@ -245,6 +260,8 @@ async def clear_all_memories(verbose: bool = True):
                 "semantic": semantic_count,
                 "eventlog": eventlog_count,
                 "status": status_count,
+                "cluster": cluster_count,
+                "profile": profile_count,
             },
             "redis_keys": len(keys) if keys else 0,
         }

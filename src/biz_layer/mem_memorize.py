@@ -89,6 +89,115 @@ from biz_layer.memcell_milvus_sync import MemCellMilvusSyncService
 logger = get_logger(__name__)
 
 
+async def _trigger_clustering(group_id: str, memcell: MemCell, scene: Optional[str] = None) -> None:
+    """异步触发 MemCell 聚类（后台任务，不阻塞主流程）
+    
+    Args:
+        group_id: 群组ID
+        memcell: 刚保存的 MemCell
+        scene: 对话场景（用于决定 Profile 提取策略）
+            - None/"work"/"company" 等：使用 group_chat 场景
+            - "assistant"/"companion" 等：使用 assistant 场景
+    """
+    logger.info(f"[聚类] 开始触发聚类: group_id={group_id}, event_id={memcell.event_id}, scene={scene}")
+    
+    try:
+        from memory_layer.cluster_manager import ClusterManager, ClusterManagerConfig, MongoClusterStorage
+        from memory_layer.profile_manager import ProfileManager, ProfileManagerConfig, MongoProfileStorage
+        from memory_layer.llm.llm_provider import LLMProvider
+        from core.di import get_bean_by_type
+        import os
+        
+        logger.info(f"[聚类] 正在获取 MongoClusterStorage...")
+        # 获取 MongoDB 存储
+        mongo_storage = get_bean_by_type(MongoClusterStorage)
+        logger.info(f"[聚类] MongoClusterStorage 获取成功: {type(mongo_storage)}")
+        
+        # 创建 ClusterManager（使用 MongoDB 存储）
+        config = ClusterManagerConfig(
+            similarity_threshold=0.65,
+            max_time_gap_days=7,
+            enable_persistence=False  # MongoDB 不需要文件持久化
+        )
+        cluster_manager = ClusterManager(config=config, storage=mongo_storage)
+        logger.info(f"[聚类] ClusterManager 创建成功")
+        
+        # 创建 ProfileManager 并连接到 ClusterManager
+        # 获取 MongoDB Profile 存储
+        profile_storage = get_bean_by_type(MongoProfileStorage)
+        logger.info(f"[聚类] MongoProfileStorage 获取成功: {type(profile_storage)}")
+        
+        llm_provider = LLMProvider(
+            provider_type=os.getenv("LLM_PROVIDER", "openai"),
+            model=os.getenv("LLM_MODEL", "gpt-4"),
+            base_url=os.getenv("LLM_BASE_URL"),
+            api_key=os.getenv("LLM_API_KEY"),
+            temperature=float(os.getenv("LLM_TEMPERATURE", "0.3")),
+            max_tokens=int(os.getenv("LLM_MAX_TOKENS", "16384"))
+        )
+        
+        # 根据 scene 决定 Profile 提取场景
+        # assistant/companion -> assistant 场景（提取兴趣、偏好、生活习惯）
+        # 其他 -> group_chat 场景（提取工作角色、技能、项目经验）
+        profile_scenario = "assistant" if scene and scene.lower() in ["assistant", "companion"] else "group_chat"
+        
+        profile_config = ProfileManagerConfig(
+            scenario=profile_scenario,
+            min_confidence=0.6,
+            enable_versioning=True,
+            auto_extract=True
+        )
+        
+        profile_manager = ProfileManager(
+            llm_provider=llm_provider,
+            config=profile_config,
+            storage=profile_storage,  # 使用 MongoDB 存储
+            group_id=group_id,
+            group_name=None  # 可以从 memcell 中获取
+        )
+        
+        # 连接 ProfileManager 到 ClusterManager
+        profile_manager.attach_to_cluster_manager(cluster_manager)
+        logger.info(f"[聚类] ProfileManager 已连接到 ClusterManager (场景: {profile_scenario}, 使用 MongoDB 存储)")
+        print(f"[聚类] ProfileManager 已连接，阈值: {profile_manager._min_memcells_threshold}")
+        
+        # 将 MemCell 转换为聚类所需的字典格式
+        memcell_dict = {
+            "event_id": str(memcell.event_id),
+            "episode": memcell.episode,
+            "timestamp": memcell.timestamp.timestamp() if memcell.timestamp else None,
+            "participants": memcell.participants or [],
+            "group_id": group_id,
+        }
+        
+        logger.info(f"[聚类] 开始执行聚类: {memcell_dict['event_id']}")
+        print(f"[聚类] 开始执行聚类: event_id={memcell_dict['event_id']}")
+        
+        # 执行聚类（会自动触发 ProfileManager 的回调）
+        cluster_id = await cluster_manager.cluster_memcell(
+            group_id=group_id,
+            memcell=memcell_dict
+        )
+        
+        print(f"[聚类] 聚类完成: cluster_id={cluster_id}")
+        
+        if cluster_id:
+            logger.info(f"[聚类] ✅ MemCell {memcell.event_id} -> Cluster {cluster_id} (group: {group_id})")
+            print(f"[聚类] ✅ MemCell {memcell.event_id} -> Cluster {cluster_id}")
+        else:
+            logger.warning(f"[聚类] ⚠️ MemCell {memcell.event_id} 聚类返回 None (group: {group_id})")
+            print(f"[聚类] ⚠️ 聚类返回 None")
+    
+    except Exception as e:
+        # 聚类失败，打印详细错误信息并重新抛出
+        import traceback
+        error_msg = f"[聚类] ❌ 触发聚类失败: {e}"
+        logger.error(error_msg, exc_info=True)
+        print(error_msg)  # 确保在控制台能看到
+        print(traceback.format_exc())
+        raise  # 重新抛出异常，让调用者知道失败了
+
+
 def _convert_data_type_to_raw_data_type(data_type) -> RawDataType:
     """
     将不同的数据类型枚举转换为统一的RawDataType
@@ -717,6 +826,10 @@ async def memorize(request: MemorizeRequest) -> List[Memory]:
     #     logger.info(f"[mem_memorize] 打印MemCell: {memcell}")
 
     memcells = [memcell]
+    
+    # 同步触发聚类（等待完成，确保 Profile 提取成功）
+    if request.group_id:
+        await _trigger_clustering(request.group_id, memcell, request.scene)
 
     # 读取记忆的流程
     participants = []

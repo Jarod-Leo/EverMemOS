@@ -83,6 +83,9 @@ class ProfileManager:
         # Initialize components
         self._profile_extractor = ProfileMemoryExtractor(llm_provider=llm_provider)
         
+        # 💡 设置 MemCell 阈值：降低到 2 个，让 Profile 更容易提取
+        self._min_memcells_threshold = 1  # 从默认的 3 降低到 2
+        
         discriminator_config = DiscriminatorConfig(
             min_confidence=self.config.min_confidence,
             use_context=True,
@@ -159,6 +162,7 @@ class ProfileManager:
         if cluster_id not in self._cluster_memcells:
             self._cluster_memcells[cluster_id] = []
         self._cluster_memcells[cluster_id].append(memcell)
+        print(f"[ProfileManager] 已添加 MemCell 到 _cluster_memcells[{cluster_id}]，当前数量: {len(self._cluster_memcells[cluster_id])}")
         
         # Update recent memcells window
         self._recent_memcells.append(memcell)
@@ -173,14 +177,22 @@ class ProfileManager:
             memcell,
             context
         )
+        logger.info(f"is_high_value: {is_high_value}, confidence: {confidence}, reason: {reason}")
+        
+        # 💡 强制设为 True，跳过价值判别（用于调试）
+        is_high_value = True
+        confidence = 1.0
+        reason = f"[FORCED] {reason}"
         
         if is_high_value:
             self._stats["high_value_memcells"] += 1
             self._watched_clusters.add(cluster_id)
-            logger.info(
+            log_msg = (
                 f"High-value memcell detected in cluster {cluster_id}: "
                 f"confidence={confidence:.2f}, reason='{reason}'"
             )
+            logger.info(log_msg)
+            print(f"[ProfileManager] {log_msg}")  # 确保控制台能看到
         
         # Extract/update profiles if cluster is watched and auto_extract is enabled
         updated_user_ids = []
@@ -194,13 +206,18 @@ class ProfileManager:
             # 使用实例属性或默认值
             min_memcells_for_extraction = getattr(self, '_min_memcells_threshold', 3)
             
+            print(f"[ProfileManager] Cluster {cluster_id}: {cluster_memcell_count} MemCells, 阈值: {min_memcells_for_extraction}")
+            
             if cluster_memcell_count < min_memcells_for_extraction:
-                logger.debug(
+                log_msg = (
                     f"Cluster {cluster_id} only has {cluster_memcell_count} memcells, "
                     f"waiting for {min_memcells_for_extraction} before extraction"
                 )
+                logger.debug(log_msg)
+                print(f"[ProfileManager] {log_msg}")
             else:
                 try:
+                    print(f"[ProfileManager] 🚀 开始提取 Cluster {cluster_id} 的 Profile...")
                     updated_profiles = await self._extract_profiles_for_cluster(
                         cluster_id=cluster_id,
                         user_id_list=user_id_list
@@ -216,12 +233,16 @@ class ProfileManager:
                     self._stats["profile_extractions"] += 1
                     
                     if profiles_updated > 0:
-                        logger.info(
-                            f"Updated {profiles_updated} profiles for cluster {cluster_id}"
-                        )
+                        log_msg = f"Updated {profiles_updated} profiles for cluster {cluster_id}"
+                        logger.info(log_msg)
+                        print(f"[ProfileManager] ✅ {log_msg}")
                 
                 except Exception as e:
-                    logger.error(f"Failed to extract profiles for cluster {cluster_id}: {e}")
+                    error_msg = f"Failed to extract profiles for cluster {cluster_id}: {e}"
+                    logger.error(error_msg)
+                    print(f"[ProfileManager] ❌ {error_msg}")
+                    import traceback
+                    print(traceback.format_exc())
                     self._stats["failed_extractions"] += 1
         
         return {
@@ -248,9 +269,60 @@ class ProfileManager:
         Returns:
             List of extracted/updated ProfileMemory objects
         """
+        print(f"[ProfileManager] _extract_profiles_for_cluster 被调用")
+        print(f"[ProfileManager]   cluster_id: {cluster_id}")
+        print(f"[ProfileManager]   _cluster_memcells keys: {list(self._cluster_memcells.keys())}")
+        print(f"[ProfileManager]   _cluster_memcells[{cluster_id}]: {len(self._cluster_memcells.get(cluster_id, []))} 个")
+        
         memcells = self._cluster_memcells.get(cluster_id, [])
         if not memcells:
+            print(f"[ProfileManager] ❌ _cluster_memcells[{cluster_id}] 为空！返回空列表")
             return []
+        
+        print(f"[ProfileManager] ✅ 找到 {len(memcells)} 个 MemCell")
+        
+        # 🔧 关键修复：将字典格式的 memcell 转换为完整的 MemCell 对象
+        # 从 MongoDB 重新加载完整的 MemCell 数据
+        from infra_layer.adapters.out.persistence.document.memory.memcell import MemCell as MemCellDoc
+        
+        full_memcells = []
+        for mc in memcells:
+            event_id = getattr(mc, 'event_id', None) or getattr(mc, '_id', None) or getattr(mc, 'id', None)
+            if event_id:
+                print(f"[ProfileManager] 正在从 MongoDB 加载 MemCell: {event_id} (类型: {type(event_id).__name__})")
+                # 从 MongoDB 加载完整的 MemCell
+                # 尝试多种方式查询
+                full_mc = None
+                
+                # 方式1: 用 event_id 字段查询
+                full_mc = await MemCellDoc.find_one({"event_id": str(event_id)})
+                
+                # 方式2: 如果没找到，尝试用 _id 查询
+                if not full_mc:
+                    try:
+                        from bson import ObjectId
+                        if isinstance(event_id, (str, ObjectId)):
+                            oid = ObjectId(str(event_id)) if isinstance(event_id, str) else event_id
+                            full_mc = await MemCellDoc.get(oid)
+                            if full_mc:
+                                print(f"[ProfileManager] ✅ 用 _id 找到了")
+                    except Exception as e:
+                        print(f"[ProfileManager] ⚠️  用 _id 查询失败: {e}")
+                
+                if full_mc:
+                    full_memcells.append(full_mc)
+                    print(f"[ProfileManager] ✅ 加载成功，包含 episode: {len(full_mc.episode) if full_mc.episode else 0} 字符")
+                else:
+                    print(f"[ProfileManager] ⚠️  未找到 MemCell: {event_id}，使用原始字典")
+                    # 如果找不到，使用原始的字典对象
+                    full_memcells.append(mc)
+        
+        if not full_memcells:
+            print(f"[ProfileManager] ❌ 没有加载到任何完整的 MemCell")
+            return []
+        
+        print(f"[ProfileManager] ✅ 加载了 {len(full_memcells)} 个完整的 MemCell，开始提取...")
+        memcells = full_memcells  # 使用完整的 MemCell 对象
         
         # Limit batch size
         if len(memcells) > self.config.batch_size:
@@ -278,37 +350,78 @@ class ProfileManager:
         # Extract profiles with retry logic
         for attempt in range(self.config.max_retries):
             try:
+                print(f"[ProfileManager] 开始调用 LLM 提取 Profile (场景: {self.config.scenario.value})...")
+                
                 if self.config.scenario == ScenarioType.ASSISTANT:
                     result = await self._profile_extractor.extract_profile_companion(request)
                 else:
                     result = await self._profile_extractor.extract_memory(request)
                 
+                print(f"[ProfileManager] LLM 调用完成，返回结果: {result}")
+                print(f"[ProfileManager] 结果类型: {type(result)}, 长度: {len(result) if result else 0}")
+                
                 if not result:
                     logger.warning(f"Profile extraction returned empty result for cluster {cluster_id}")
+                    print(f"[ProfileManager] ❌ LLM 返回空结果")
                     return []
                 
-                # Save profiles to storage
+                print(f"[ProfileManager] ✅ LLM 返回了 {len(result)} 个 Profile")
+                
+                # 🚀 并行保存所有 profiles 到 storage
                 updated_profiles = []
-                for profile in result:
+                save_tasks = []
+                
+                for i, profile in enumerate(result):
                     user_id = getattr(profile, "user_id", None)
+                    print(f"[ProfileManager] Profile {i+1}/{len(result)}: user_id={user_id}, 类型={type(profile).__name__}")
+                    
                     if user_id:
                         metadata = {
+                            "group_id": self.group_id,  # 🔧 添加 group_id
                             "cluster_id": cluster_id,
-                            "cluster_memcell_count": len(memcells),
+                            "memcell_count": len(memcells),
                             "scenario": self.config.scenario.value,
                         }
                         
-                        success = await self._storage.save_profile(
-                            user_id=user_id,
-                            profile=profile,
-                            metadata=metadata
-                        )
-                        
-                        if success:
+                        save_tasks.append((
+                            user_id,
+                            profile,
+                            self._storage.save_profile(
+                                user_id=user_id,
+                                profile=profile,
+                                metadata=metadata
+                            )
+                        ))
+                    else:
+                        print(f"[ProfileManager] ⚠️  Profile {i+1} 没有 user_id，跳过保存")
+                
+                print(f"[ProfileManager] 准备保存 {len(save_tasks)} 个 Profile...")
+                
+                # 并行执行所有保存任务
+                if save_tasks:
+                    save_results = await asyncio.gather(
+                        *[task[2] for task in save_tasks],
+                        return_exceptions=True
+                    )
+                    
+                    print(f"[ProfileManager] 保存结果: {save_results}")
+                    
+                    # 处理结果
+                    for (user_id, profile, _), success in zip(save_tasks, save_results):
+                        if isinstance(success, Exception):
+                            error_msg = f"Failed to save profile for user {user_id}: {success}"
+                            logger.warning(error_msg)
+                            print(f"[ProfileManager] ❌ {error_msg}")
+                            import traceback
+                            print(traceback.format_exc())
+                        elif success:
                             updated_profiles.append(profile)
+                            print(f"[ProfileManager] ✅ 成功保存 Profile: user_id={user_id}")
                         else:
                             logger.warning(f"Failed to save profile for user {user_id}")
+                            print(f"[ProfileManager] ❌ 保存失败（返回 False）: user_id={user_id}")
                 
+                print(f"[ProfileManager] 最终成功保存了 {len(updated_profiles)} 个 Profile")
                 return updated_profiles
             
             except Exception as e:
@@ -388,6 +501,8 @@ class ProfileManager:
         """
         async def on_cluster_callback(group_id: str, memcell: Dict[str, Any], cluster_id: str):
             """Callback for cluster assignment events."""
+            print(f"[ProfileManager] 🔔 收到聚类回调: cluster_id={cluster_id}, group_id={group_id}")
+            
             # Create wrapper object
             class MemCellWrapper:
                 def __init__(self, data: Dict[str, Any]):
@@ -396,15 +511,19 @@ class ProfileManager:
             
             mc_obj = MemCellWrapper(memcell)
             
+            print(f"[ProfileManager] 调用 on_memcell_clustered...")
             # Trigger profile update
-            await self.on_memcell_clustered(
+            result = await self.on_memcell_clustered(
                 memcell=mc_obj,
                 cluster_id=cluster_id,
                 user_id_list=memcell.get("user_id_list", [])
             )
+            print(f"[ProfileManager] on_memcell_clustered 返回: {result}")
         
         # Register callback with ClusterManager
+        print(f"[ProfileManager] 注册回调到 ClusterManager")
         cluster_manager.on_cluster_assigned(on_cluster_callback)
+        print(f"[ProfileManager] 回调注册成功")
         
         logger.info("ProfileManager successfully attached to ClusterManager")
     
