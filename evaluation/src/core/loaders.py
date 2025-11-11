@@ -86,7 +86,7 @@ def load_locomo_dataset(data_path: str, dataset_name: str = "locomo") -> Dataset
     qa_pairs = []
     
     for idx, item in enumerate(raw_data):
-        # 🔥 添加数据集前缀，避免不同数据集间的 conversation_id 冲突
+        # 添加数据集前缀，避免不同数据集间的 conversation_id 冲突
         # 例如：locomo_0, longmemeval_0, personamem_0
         conv_id = f"{dataset_name}_{idx}"
         conversation_data = item.get("conversation", {})
@@ -120,11 +120,11 @@ def _convert_locomo_conversation(conversation_data: dict, conv_id: str) -> Conve
         key=lambda x: int(x.split("_")[1])  # 提取 session_X 中的数字 X 进行排序
     )
     
-    # 🔥 为没有时间戳的数据生成伪造的起始时间（用于 online API）
+    # 为没有时间戳的数据生成伪造的起始时间（用于 online API）
     # 使用一个固定的基准时间：2024-01-01 00:00:00
     fake_base_time = datetime(2024, 1, 1, 0, 0, 0)
     
-    # 🔥 第一步：解析所有 session 的时间戳
+    # 第一步：解析所有 session 的时间戳
     session_times = []
     for session_idx, session_key in enumerate(session_keys):
         session_time_key = f"{session_key}_date_time"
@@ -147,7 +147,7 @@ def _convert_locomo_conversation(conversation_data: dict, conv_id: str) -> Conve
                 "is_fake": True
             })
     
-    # 🔥 第二步：为每个 session 分配消息时间戳
+    # 第二步：为每个 session 分配消息时间戳
     for session_idx, session_key in enumerate(session_keys):
         session_messages = conversation_data[session_key]
         
@@ -158,7 +158,7 @@ def _convert_locomo_conversation(conversation_data: dict, conv_id: str) -> Conve
         current_session_time = session_times[session_idx]["time"]
         is_fake_timestamp = session_times[session_idx]["is_fake"]
         
-        # 🔥 计算消息时间间隔
+        # 计算消息时间间隔
         # 策略：优先使用30秒间隔，只有在会超出下一个session时才缩小间隔
         num_messages = len(session_messages)
         default_interval = 30  # 默认30秒间隔
@@ -194,7 +194,7 @@ def _convert_locomo_conversation(conversation_data: dict, conv_id: str) -> Conve
         for msg_idx, msg in enumerate(session_messages):
             msg_timestamp = current_session_time + timedelta(seconds=msg_idx * time_interval)
             
-            # 🔥 处理图片信息（对齐 evaluation_archive）
+            # 处理图片信息
             content = msg['text']
             if msg.get("img_url"):
                 blip_caption = msg.get("blip_caption", "an image")
@@ -204,7 +204,7 @@ def _convert_locomo_conversation(conversation_data: dict, conv_id: str) -> Conve
             message = Message(
                 speaker_id=f"{msg['speaker'].lower().replace(' ', '_')}_{conv_id}",
                 speaker_name=msg['speaker'],
-                content=content,  # 🔥 使用处理后的 content
+                content=content,  # 使用处理后的 content
                 timestamp=msg_timestamp,
                 metadata={
                     "session": session_key,

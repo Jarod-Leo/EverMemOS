@@ -30,12 +30,6 @@ if str(src_path) not in sys.path:
 from common_utils.load_env import setup_environment
 setup_environment(load_env_file_name=".env", check_env_var="MONGODB_HOST")
 
-# 3. 初始化依赖注入容器（如果需要的话）
-# 注：当前 adapter 手动创建对象，暂不需要 DI 容器
-# 但保留此注释，未来如果需要可以启用：
-# from application_startup import setup_all
-# setup_all()
-
 # ===== 现在可以安全地导入 EverMemOS 组件 =====
 from evaluation.src.core.loaders import load_dataset
 from evaluation.src.core.pipeline import Pipeline

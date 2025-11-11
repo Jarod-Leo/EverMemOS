@@ -162,18 +162,10 @@ class Pipeline:
         results = {}
         
         # ===== Stage 1: Add =====
-        add_just_completed = False  # 🔥 标记 add 是否刚刚完成
+        add_just_completed = False  # 标记 add 是否刚刚完成
         
         if "add" in stages and "add" not in self.completed_stages:
             self.logger.info("Starting Stage 1: Add")
-            
-            # 🔥 准备阶段：清理已有数据（如果需要）
-            # try:
-            #     await self.adapter.prepare(conversations=dataset.conversations)
-            # except Exception as e:
-            #     self.logger.warning(f"Preparation stage failed: {e}")
-            #     self.console.print(f"\n[yellow]⚠️  Preparation failed: {e}[/yellow]")
-            #     self.console.print("[yellow]   Continuing with Add stage...[/yellow]")
             
             stage_results = await run_add_stage(
                 adapter=self.adapter,
@@ -185,16 +177,16 @@ class Pipeline:
                 completed_stages=self.completed_stages,
             )
             results.update(stage_results)
-            add_just_completed = True  # 🔥 Add 刚刚完成
+            add_just_completed = True  # Add 刚刚完成
             
         elif "add" in self.completed_stages:
             self.console.print("\n[yellow]⏭️  Skip Add stage (already completed)[/yellow]")
-            # 🔥 重新构建索引元数据（由 adapter 负责，仅本地系统需要）
+            # 重新构建索引元数据（由 adapter 负责，仅本地系统需要）
             # 对于在线 API，返回 None，但仍需设置 results["index"]
             index = self.adapter.build_lazy_index(dataset.conversations, self.output_dir)
             results["index"] = index  # 即使是 None 也要设置
         else:
-            # 🔥 重新构建索引元数据（由 adapter 负责，仅本地系统需要）
+            # 重新构建索引元数据（由 adapter 负责，仅本地系统需要）
             # 对于在线 API，返回 None，但仍需设置 results["index"]
             index = self.adapter.build_lazy_index(dataset.conversations, self.output_dir)
             results["index"] = index  # 即使是 None 也要设置
@@ -202,7 +194,7 @@ class Pipeline:
                 self.logger.info("⏭️  Skipped Stage 1, using lazy loading")
         
         # ⏰ Post-Add Wait: 对于在线 API 系统，等待后台索引构建完成
-        # 🔥 关键修复：只有当 add 刚刚完成时才等待
+        # 只有当 add 刚刚完成时才等待
         if add_just_completed:
             wait_seconds = self.adapter.config.get("post_add_wait_seconds", 0)
             if wait_seconds > 0 and "search" in stages:

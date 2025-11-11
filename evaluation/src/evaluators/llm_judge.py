@@ -43,18 +43,13 @@ class LLMJudge(BaseEvaluator):
         answer_results: List[AnswerResult]
     ) -> EvaluationResult:
         """
-        使用 LLM 评估答案
-        
-        对齐到 evaluation_archive 的评估逻辑：
-        - 保留每次 run 的独立判断
-        - 分别计算每次 run 的准确率
-        - 返回 mean 和 std
+        使用LLM评估答案，返回多次运行的统计结果
         
         Args:
             answer_results: 答案结果列表
             
         Returns:
-            EvaluationResult: 评估结果
+            EvaluationResult: 包含mean和std的评估结果
         """
         print(f"\n{'='*60}")
         print(f"Evaluation: LLM Judge (model={self.model}, runs={self.num_runs})")
@@ -65,7 +60,7 @@ class LLMJudge(BaseEvaluator):
         # 并发评估所有答案
         semaphore = asyncio.Semaphore(10)  # 限制并发数
         
-        # 🔥 使用 tqdm 进度条（对齐 evaluation_archive）
+        # 使用 tqdm 进度条
         pbar = tqdm(total=len(answer_results), desc="⚖️  Evaluate Progress", unit="qa")
         
         async def evaluate_single(answer_result: AnswerResult):
@@ -84,7 +79,7 @@ class LLMJudge(BaseEvaluator):
         for result in results:
             detailed_results.append(result)
         
-        # 🔥 对齐到 evaluation_archive：分别计算每次 run 的准确率
+        # 分别计算每次 run 的准确率
         run_scores = []
         category_stats = defaultdict(lambda: {"correct": [0] * self.num_runs, "total": 0})
         
@@ -144,14 +139,14 @@ class LLMJudge(BaseEvaluator):
             for cat, stats in sorted(category_accuracies.items()):
                 print(f"   Category {cat}: {stats['mean']:.4f} ± {stats['std']:.4f} (n={stats['total']})")
         
-        # 🔥 对齐到 evaluation_archive：按 conversation 分组
+        # 按 conversation 分组
         grouped_results = self._group_by_conversation(detailed_results)
         
         return EvaluationResult(
             total_questions=len(answer_results),
             correct=int(mean_accuracy * len(answer_results)),  # 使用 mean 计算
             accuracy=mean_accuracy,
-            detailed_results=grouped_results,  # ⬅️ 使用分组后的结果
+            detailed_results=grouped_results,
             metadata={
                 "model": self.model,
                 "num_runs": self.num_runs,
@@ -164,13 +159,7 @@ class LLMJudge(BaseEvaluator):
     
     def _group_by_conversation(self, detailed_results: List[Dict]) -> Dict[str, List[Dict]]:
         """
-        将结果按 conversation 分组
-        
-        对齐到 evaluation_archive 的格式：
-        {
-            "locomo_exp_user_0": [...],
-            "locomo_exp_user_1": [...],
-        }
+        将结果按conversation分组（例如：locomo_exp_user_0, locomo_exp_user_1等）
         """
         grouped = defaultdict(list)
         
@@ -200,11 +189,7 @@ class LLMJudge(BaseEvaluator):
     
     async def _evaluate_single_answer(self, answer_result: AnswerResult) -> dict:
         """
-        评估单个答案
-        
-        🔥 对齐到 evaluation_archive：
-        - 保留每次 run 的独立判断 (judgment_1, judgment_2, judgment_3)
-        - 不做多数投票，不生成 is_correct
+        评估单个答案，保留每次run的独立判断
         """
         question = answer_result.question
         golden_answer = answer_result.golden_answer
@@ -218,7 +203,7 @@ class LLMJudge(BaseEvaluator):
             )
             judgments.append(is_correct)
         
-        # 🔥 对齐到 evaluation_archive：使用 judgment_1, judgment_2, ... 格式
+        # 使用 judgment_1, judgment_2, ... 格式
         llm_judgments = {
             f"judgment_{i+1}": judgment 
             for i, judgment in enumerate(judgments)
@@ -229,7 +214,7 @@ class LLMJudge(BaseEvaluator):
             "question": question,
             "golden_answer": golden_answer,
             "generated_answer": generated_answer,
-            "llm_judgments": llm_judgments,  # ⬅️ 对齐格式
+            "llm_judgments": llm_judgments,
             "category": answer_result.category,
         }
     

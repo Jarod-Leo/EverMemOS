@@ -1,7 +1,4 @@
-# ========================================
 # LLM Judge Prompts
-# ========================================
-# Original source: evaluation_archive/locomo_evaluation/stage5_eval.py:29-57
 # Used in: src/evaluators/llm_judge.py
 llm_judge:
   system_prompt: |
@@ -32,19 +29,9 @@ llm_judge:
 
     Just return the label CORRECT or WRONG in a json format with the key as "label".
   
-  description: "LLM-based answer evaluation (LoCoMo original)"
-  source: "evaluation_archive/locomo_evaluation/stage5_eval.py"
-  variables:
-    - question: "The question being asked"
-    - golden_answer: "Ground truth answer"
-    - generated_answer: "Model-generated answer"
 
-
-# ========================================
 # Online API Answer Prompts
-# ========================================
 # Used in: src/adapters/online_base.py and its subclasses
-
 online_api:
   # 通用 Answer Prompt（Mem0、Memos、Memu 共用）
   default:
@@ -161,11 +148,8 @@ online_api:
       </ENTITIES>
 
 
-# ========================================
 # Memory Extraction / Add Stage Prompts
-# ========================================
 # Used during the add stage to guide memory extraction and formatting
-
 add_stage:
   # Mem0 自定义记忆提取指令
   mem0:

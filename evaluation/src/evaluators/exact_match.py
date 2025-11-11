@@ -139,20 +139,10 @@ class ExactMatch(BaseEvaluator):
     
     def _extract_choice(self, text: str) -> str:
         """
-        从文本中提取选项（如 (a), (b), (c), (d)）
+        从文本中提取选项（支持多种格式：(a), a), a., A等）
         
-        支持多种格式：
-        - (a)
-        - a)
-        - a.
-        - A
-        - option a
-        
-        Args:
-            text: 文本
-            
         Returns:
-            提取的选项（如 "(a)"），如果未找到则返回空字符串
+            标准化的选项格式"(a)"，未找到则返回空字符串
         """
         # 尝试匹配 (a), (b), (c), (d) 等格式
         match = re.search(r'\(([a-zA-Z])\)', text)

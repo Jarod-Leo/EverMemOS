@@ -18,10 +18,7 @@ def build_context(search_result: SearchResult) -> str:
     """
     从检索结果构建上下文
     
-    注意：
-    - 🔥 优先使用预格式化的 context（如果存在）
-    - 对于双 speaker 场景（如 Locomo 风格数据），adapter 会预先使用特定模板格式化
-    - 单 speaker 场景使用简单的序号格式化
+    优先使用预格式化的context（双speaker场景），否则使用简单序号格式化（单speaker场景）
     
     Args:
         search_result: 检索结果
@@ -29,7 +26,7 @@ def build_context(search_result: SearchResult) -> str:
     Returns:
         上下文字符串
     """
-    # 🔥 优先使用预格式化的 context（由 adapter 提供）
+    # 优先使用预格式化的 context（由 adapter 提供）
     formatted_context = search_result.retrieval_metadata.get("formatted_context", "")
     if formatted_context:
         return formatted_context
@@ -44,7 +41,7 @@ def build_context(search_result: SearchResult) -> str:
     
     context = "\n\n".join(context_parts)
     
-    # 🔥 对于 Memos 等支持 preferences 的系统，添加格式化的 pref_string
+    # 对于 Memos 等支持 preferences 的系统，添加格式化的 pref_string
     preferences = search_result.retrieval_metadata.get("preferences", {})
     pref_string = preferences.get("pref_string", "")
     
@@ -83,7 +80,7 @@ async def run_answer_stage(
     SAVE_INTERVAL = 400  # 每 400 个任务保存一次
     MAX_CONCURRENT = 50  # 最大并发数
     
-    # 🔥 加载细粒度 checkpoint
+    # 加载细粒度 checkpoint
     all_answer_results = {}
     if checkpoint_manager:
         loaded_results = checkpoint_manager.load_answer_progress()
@@ -119,8 +116,8 @@ async def run_answer_stage(
                     golden_answer=result_dict["golden_answer"],
                     category=result_dict.get("category"),
                     conversation_id=result_dict.get("conversation_id", ""),
-                    formatted_context=result_dict.get("formatted_context", ""),  # 🔥 加载 formatted_context
-                    # search_results=result_dict.get("search_results", []),  # 🔥 不再加载 search_results
+                    formatted_context=result_dict.get("formatted_context", ""),  # 加载 formatted_context
+                    # search_results 不再加载以节省空间
                 ))
         return results
     
@@ -129,7 +126,7 @@ async def run_answer_stage(
     failed = 0
     start_time = time.time()
     
-    # 🔥 使用 tqdm 进度条（对齐 evaluation_archive）
+    # 使用 tqdm 进度条
     pbar = tqdm(
         total=total_qa_count,
         initial=processed_count,
@@ -180,8 +177,8 @@ IMPORTANT: This is a multiple-choice question. You MUST analyze the context and 
                 golden_answer=qa.answer,
                 category=qa.category,
                 conversation_id=search_result.conversation_id,
-                formatted_context=context,  # 🔥 保存实际使用的上下文
-                # search_results=search_result.results,  # 🔥 不再保存详细检索结果（节省 99% 空间）
+                formatted_context=context,  # 保存实际使用的上下文
+                # search_results 不再保存以节省空间
             )
             
             # 保存结果
@@ -192,14 +189,14 @@ IMPORTANT: This is a multiple-choice question. You MUST analyze the context and 
                 "golden_answer": result.golden_answer,
                 "category": result.category,
                 "conversation_id": result.conversation_id,
-                "formatted_context": result.formatted_context,  # 🔥 保存 formatted_context
-                # "search_results": result.search_results,  # 🔥 不再保存（节省 99% 空间）
+                "formatted_context": result.formatted_context,  # 保存 formatted_context
+                # search_results 不再保存以节省空间
             }
             
             completed += 1
             pbar.update(1)  # 更新进度条
             
-            # 🔥 定期保存 checkpoint
+            # 定期保存 checkpoint
             if checkpoint_manager and (completed % SAVE_INTERVAL == 0 or completed == total_qa_count):
                 elapsed = time.time() - start_time
                 speed = completed / elapsed if elapsed > 0 else 0
@@ -238,7 +235,7 @@ IMPORTANT: This is a multiple-choice question. You MUST analyze the context and 
     print(f"   - Average speed: {total_qa_count/elapsed_time:.1f} qa/s")
     print(f"{'='*60}\n")
     
-    # 🔥 完成后删除细粒度检查点
+    # 完成后删除细粒度检查点
     if checkpoint_manager:
         checkpoint_manager.delete_answer_checkpoints()
     

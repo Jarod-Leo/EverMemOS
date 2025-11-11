@@ -1,11 +1,5 @@
 """
-Checkpoint 管理模块
-
-支持断点续传，避免评测中途失败需要重新运行。
-
-两层 Checkpoint 机制：
-1. 跨阶段 Checkpoint：记录哪些阶段（add/search/answer/evaluate）已完成
-2. 阶段内 Checkpoint：记录单个阶段内的细粒度进度（每个会话/每N个问题）
+Checkpoint 管理模块 - 支持断点续传
 """
 import json
 from pathlib import Path
@@ -14,10 +8,12 @@ from datetime import datetime
 
 
 class CheckpointManager:
-    """Checkpoint 管理器
+    """
+    Checkpoint 管理器
     
-    - Stage 3 (search): 每处理完一个会话就保存检查点
-    - Stage 4 (answer): 每 SAVE_INTERVAL 个问题保存一次
+    两层机制：
+    1. 跨阶段：记录已完成的阶段（add/search/answer/evaluate）
+    2. 阶段内：记录细粒度进度（search按会话，answer按问题数）
     """
     
     def __init__(self, output_dir: Path, run_name: str = "default"):
@@ -191,14 +187,10 @@ class CheckpointManager:
     
     def load_add_progress(self, memcells_dir: Path, all_conv_ids: list) -> set:
         """
-        加载 Add 阶段的细粒度进度（检查哪些会话已完成）
-                
-        Args:
-            memcells_dir: MemCells 保存目录
-            all_conv_ids: 所有会话 ID 列表
-            
+        加载Add阶段的细粒度进度（检查哪些会话已完成）
+        
         Returns:
-            已完成的会话 ID 集合
+            已完成的会话ID集合
         """
         import json
         
@@ -211,7 +203,7 @@ class CheckpointManager:
         print(f"\n🔍 Checking for completed conversations in: {memcells_dir}")
         
         for conv_id in all_conv_ids:
-            # 🔥 修复：匹配 stage1 实际保存的文件名格式
+            # 匹配 stage1 实际保存的文件名格式
             output_file = memcells_dir / f"memcell_list_conv_{conv_id}.json"
             if output_file.exists():
                 # 验证文件有效性（非空且可解析）
