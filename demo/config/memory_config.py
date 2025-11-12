@@ -29,8 +29,16 @@ class EmbeddingConfig:
 
 @dataclass
 class MongoDBConfig:
+    """MongoDB 配置 - 支持通过 URI 参数追加认证信息"""
     uri: str = field(default_factory=lambda: os.getenv("MONGODB_URI", "mongodb://localhost:27017/memsys"))
     database: str = field(default_factory=lambda: os.getenv("MONGODB_DATABASE", "memsys"))
+    
+    def __post_init__(self):
+        """追加 URI 参数（如 authSource、socketTimeoutMS 等）"""
+        uri_params = os.getenv("MONGODB_URI_PARAMS", "").strip()
+        if uri_params:
+            separator = '&' if '?' in self.uri else '?'
+            self.uri = f"{self.uri}{separator}{uri_params}"
 
 
 @dataclass
