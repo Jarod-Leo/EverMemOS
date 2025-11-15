@@ -444,7 +444,8 @@ curl -X POST http://localhost:1995/api/v3/agentic/memorize \
     "sender_name": "Chen",
     "content": "We need to complete the product design this week",
     "group_id": "group_001",
-    "group_name": "Project Discussion Group"
+    "group_name": "Project Discussion Group",
+    "scene": "group_chat"
   }'
 ```
 
@@ -466,18 +467,23 @@ EverMemOS supports a standardized group chat data format ([GroupChatFormat](data
 # Use script for batch storage (Chinese data)
 uv run python src/bootstrap.py src/run_memorize.py \
   --input data/group_chat_zh.json \
-  --api-url http://localhost:1995/api/v3/agentic/memorize
+  --api-url http://localhost:1995/api/v3/agentic/memorize \
+  --scene group_chat 
 
 # Or use English data
 uv run python src/bootstrap.py src/run_memorize.py \
   --input data/group_chat_en.json \
-  --api-url http://localhost:1995/api/v3/agentic/memorize
+  --api-url http://localhost:1995/api/v3/agentic/memorize \
+  --scene group_chat
 
 # Validate file format
 uv run python src/bootstrap.py src/run_memorize.py \
   --input data/group_chat_en.json \
+  --scene group_chat \
   --validate-only
 ```
+
+> ℹ️ `scene` is required and must be either `assistant` or `group_chat`, so the memorization pipeline knows which extraction profile to run.
 
 **GroupChatFormat Example**:
 

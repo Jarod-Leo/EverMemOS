@@ -439,7 +439,8 @@ curl -X POST http://localhost:1995/api/v3/agentic/memorize \
     "sender_name": "Chen",
     "content": "我们需要在本周完成产品设计",
     "group_id": "group_001",
-    "group_name": "项目讨论组"
+    "group_name": "项目讨论组",
+    "scene": "group_chat"
   }'
 ```
 
@@ -461,18 +462,23 @@ EverMemOS 支持标准化的群聊数据格式（[GroupChatFormat](data_format/g
 # 使用脚本批量存储（中文数据）
 uv run python src/bootstrap.py src/run_memorize.py \
   --input data/group_chat_zh.json \
-  --api-url http://localhost:1995/api/v3/agentic/memorize
+  --api-url http://localhost:1995/api/v3/agentic/memorize \
+  --scene group_chat
 
 # 或者使用英文数据
 uv run python src/bootstrap.py src/run_memorize.py \
   --input data/group_chat_en.json \
-  --api-url http://localhost:1995/api/v3/agentic/memorize
+  --api-url http://localhost:1995/api/v3/agentic/memorize \
+  --scene group_chat
 
 # 验证文件格式
 uv run python src/bootstrap.py src/run_memorize.py \
   --input data/group_chat_zh.json \
+  --scene group_chat \
   --validate-only
 ```
+
+> ℹ️ `scene` 为必填字段，仅支持 `assistant` 或 `group_chat`，用于指定记忆提取策略。
 
 **GroupChatFormat 格式示例**：
 
