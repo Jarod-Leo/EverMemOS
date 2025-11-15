@@ -3,10 +3,64 @@
 Encapsulates all HTTP API call details and provides the simplest interface.
 """
 
+import re
 import asyncio
 import httpx
 from typing import List, Dict, Any
 from common_utils.datetime_utils import get_now_with_timezone, to_iso_format
+
+
+def extract_event_time_from_memory(mem: Dict[str, Any]) -> str:
+    """从记忆数据中提取事件实际发生时间
+    
+    提取优先级：
+    1. subject 字段中的日期（括号格式，如 "(2025-08-26)"）
+    2. subject 字段中的日期（中文格式，如 "2025年8月26日"）
+    3. episode 内容中的日期（中文或 ISO 格式）
+    4. 如果都提取不到，返回 "N/A"（不显示存储时间）
+    
+    Args:
+        mem: 记忆字典，包含 subject, episode 等字段
+        
+    Returns:
+        日期字符串，格式为 YYYY-MM-DD，或 "N/A"
+    """
+    subject = mem.get("subject", "")
+    episode = mem.get("episode", "")
+    
+    # 1. 从 subject 提取：匹配括号内的 ISO 日期格式 (YYYY-MM-DD)
+    if subject:
+        match = re.search(r'\((\d{4}-\d{2}-\d{2})\)', subject)
+        if match:
+            return match.group(1)
+        
+        # 2. 从 subject 提取：匹配中文日期格式 "YYYY年MM月DD日"
+        match = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', subject)
+        if match:
+            year, month, day = match.groups()
+            return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+    
+    # 3. 从 episode 提取（搜索整个内容，不限制字符数）
+    if episode:
+        # 匹配 "于YYYY年MM月DD日" 或 "在YYYY年MM月DD日"
+        match = re.search(r'[于在](\d{4})年(\d{1,2})月(\d{1,2})日', episode)
+        if match:
+            year, month, day = match.groups()
+            return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+        
+        # 匹配 ISO 格式 "YYYY-MM-DD"
+        match = re.search(r'(\d{4})-(\d{2})-(\d{2})', episode)
+        if match:
+            return match.group(0)
+        
+        # 匹配其他中文日期格式（不带"于/在"前缀）
+        match = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', episode)
+        if match:
+            year, month, day = match.groups()
+            return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
+    
+    # 4. 无法提取事件时间，返回 N/A（不显示存储时间）
+    return "N/A"
 
 
 class SimpleMemoryManager:
@@ -154,12 +208,13 @@ class SimpleMemoryManager:
         
         for i, mem in enumerate(memories, 1):
             score = mem.get('score', 0)
-            timestamp = mem.get('timestamp', '')[:10]
+            # 提取事件实际发生时间（不是存储时间）
+            event_time = extract_event_time_from_memory(mem)
             subject = mem.get('subject', '')
             summary = mem.get('summary', '')
             episode = mem.get('episode', '')
             
-            print(f"\n     [{i}] Relevance: {score:.4f} | Time: {timestamp}")
+            print(f"\n     [{i}] Relevance: {score:.4f} | Time: {event_time}")
             if subject:
                 print(f"         Subject: {subject}")
             if summary:

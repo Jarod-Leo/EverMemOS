@@ -213,10 +213,20 @@ class AgenticV3Controller(BaseController):
             memory_count = len(memories) if memories else 0
             logger.info("处理记忆请求完成，保存了 %s 条记忆", memory_count)
 
+            # 优化返回信息，帮助用户理解运行状态
+            if memory_count > 0:
+                message = f"Extracted {memory_count} memories"
+            else:
+                message = "Message queued, awaiting boundary detection"
+
             return {
                 "status": ErrorStatus.OK.value,
-                "message": f"记忆存储成功，共保存 {memory_count} 条记忆",
-                "result": {"saved_memories": memories, "count": memory_count},
+                "message": message,
+                "result": {
+                    "saved_memories": memories, 
+                    "count": memory_count,
+                    "status_info": "accumulated" if memory_count == 0 else "extracted"
+                },
             }
 
         except ValueError as e:
