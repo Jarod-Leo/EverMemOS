@@ -45,7 +45,9 @@ class EpisodicMemoryDoc(AliasDoc("episodic-memory", number_of_shards=3)):
     - edge_completion: 前缀匹配和自动补全
     """
 
-    ID_SOURCE_FIELD = "event_id"
+    class CustomMeta:
+        # 指定用于自动填充 meta.id 的字段名
+        id_source_field = "event_id"
 
     # 基础标识字段
     event_id = e_field.Keyword(required=True)

@@ -68,7 +68,9 @@ class EpisodicMemoryMilvusConverter(BaseMilvusConverter[EpisodicMemoryCollection
                 ),
                 "user_id": source_doc.user_id,
                 "group_id": getattr(source_doc, 'group_id', ""),
-                "participants": getattr(source_doc, 'participants', []),  # 添加 participants
+                "participants": getattr(
+                    source_doc, 'participants', []
+                ),  # 添加 participants
                 # 时间字段 - 转换为 Unix 时间戳
                 "timestamp": timestamp,
                 # 核心内容字段
@@ -80,8 +82,10 @@ class EpisodicMemoryMilvusConverter(BaseMilvusConverter[EpisodicMemoryCollection
                     if hasattr(source_doc, 'type') and source_doc.type
                     else ""
                 ),
-                # 详细信息 JSON
-                "detail": json.dumps(cls._build_detail(source_doc), ensure_ascii=False),
+                # 元数据 JSON（详细信息）
+                "metadata": json.dumps(
+                    cls._build_detail(source_doc), ensure_ascii=False
+                ),
                 # 审计字段
                 "created_at": (
                     int(source_doc.created_at.timestamp())

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Tuple
 import logging
 import asyncio
 
@@ -11,7 +11,7 @@ import time
 from typing import Dict, Any
 from dataclasses import dataclass
 
-from memory_layer.types import Memory
+from memory_layer.types import Memory, RawDataType
 from biz_layer.mem_memorize import memorize
 from memory_layer.memory_manager import MemorizeRequest
 from .fetch_mem_service import get_fetch_memory_service
@@ -32,6 +32,10 @@ from common_utils.datetime_utils import from_iso_format, get_now_with_timezone
 from infra_layer.adapters.out.persistence.repository.memcell_raw_repository import (
     MemCellRawRepository,
 )
+from infra_layer.adapters.out.persistence.repository.group_user_profile_memory_raw_repository import (
+    GroupUserProfileMemoryRawRepository,
+)
+from infra_layer.adapters.out.persistence.document.memory.memcell import DataTypeEnum
 from infra_layer.adapters.out.persistence.document.memory.user_profile import (
     UserProfile,
 )
@@ -823,6 +827,114 @@ class MemoryManager:
             ),
         )
 
+    def _calculate_importance_score(
+        self, importance_evidence: Optional[Dict[str, Any]]
+    ) -> float:
+        """计算群组重要性得分
+
+        基于群组重要性证据计算得分，主要考虑：
+        - speak_count: 用户在该群组中的发言次数
+        - refer_count: 用户被提及的次数
+        - conversation_count: 该群组的对话总数
+
+        重要性得分 = (总发言次数 + 总被提及次数) / 总对话次数
+
+        Args:
+            importance_evidence: 群组重要性证据字典
+
+        Returns:
+            float: 重要性得分，范围 [0, +∞)，值越大表示群组越重要
+        """
+        if not importance_evidence or not isinstance(importance_evidence, dict):
+            return 0.0
+
+        evidence_list = importance_evidence.get('evidence_list', [])
+        if not evidence_list:
+            return 0.0
+
+        total_speak_count = 0
+        total_refer_count = 0
+        total_conversation_count = 0
+
+        # 累加所有证据的统计数据
+        for evidence in evidence_list:
+            if isinstance(evidence, dict):
+                total_speak_count += evidence.get('speak_count', 0)
+                total_refer_count += evidence.get('refer_count', 0)
+                total_conversation_count += evidence.get('conversation_count', 0)
+
+        # 避免除零错误
+        if total_conversation_count == 0:
+            return 0.0
+
+        # 计算重要性得分
+        return (total_speak_count + total_refer_count) / total_conversation_count
+
+    async def _batch_get_memcells(
+        self, event_ids: List[str], batch_size: int = 100
+    ) -> Dict[str, Any]:
+        """批量获取 MemCells，支持分批查询以控制单次查询大小
+
+        Args:
+            event_ids: 需要获取的所有 event_id 列表
+            batch_size: 每批次查询的数量，默认 100
+
+        Returns:
+            Dict[event_id, MemCell]: event_id 到 MemCell 的映射字典
+        """
+        if not event_ids:
+            return {}
+
+        # 去重 event_ids
+        unique_event_ids = list(set(event_ids))
+        logger.debug(
+            f"批量获取 MemCells: 总数 {len(unique_event_ids)} (去重前: {len(event_ids)})"
+        )
+
+        memcell_repo = get_bean_by_type(MemCellRawRepository)
+        all_memcells = {}
+
+        # 分批获取
+        for i in range(0, len(unique_event_ids), batch_size):
+            batch_event_ids = unique_event_ids[i : i + batch_size]
+            logger.debug(
+                f"获取第 {i // batch_size + 1} 批 MemCells: {len(batch_event_ids)} 个"
+            )
+
+            batch_memcells = await memcell_repo.get_by_event_ids(batch_event_ids)
+            all_memcells.update(batch_memcells)
+
+        logger.debug(f"批量获取 MemCells 完成: 成功获取 {len(all_memcells)} 个")
+        return all_memcells
+
+    async def _batch_get_group_profiles(
+        self, user_group_pairs: List[Tuple[str, str]]
+    ) -> Dict[Tuple[str, str], Any]:
+        """批量获取群组用户档案，支持高效查询
+
+        Args:
+            user_group_pairs: (user_id, group_id) 元组列表
+
+        Returns:
+            Dict[(user_id, group_id), GroupUserProfileMemory]: 映射字典
+        """
+        if not user_group_pairs:
+            return {}
+
+        # 去重
+        unique_pairs = list(set(user_group_pairs))
+        logger.debug(
+            f"批量获取群组用户档案: 总数 {len(unique_pairs)} (去重前: {len(user_group_pairs)})"
+        )
+
+        group_user_profile_repo = get_bean_by_type(GroupUserProfileMemoryRawRepository)
+        profiles = await group_user_profile_repo.batch_get_by_user_groups(unique_pairs)
+
+        logger.debug(
+            f"批量获取群组用户档案完成: 成功获取 {len([v for v in profiles.values() if v is not None])} 个"
+        )
+        return profiles
+
     async def group_by_groupid_stratagy(
         self, search_results: List[Dict[str, Any]], source_type: str = "milvus"
     ) -> tuple:
@@ -835,6 +947,56 @@ class MemoryManager:
         Returns:
             tuple: (memories, scores, importance_scores, original_data, total_count)
         """
+        # 第一步：收集所有需要查询的数据
+        all_memcell_event_ids = []
+        all_user_group_pairs = []
+
+        for hit in search_results:
+            # 提取 memcell_event_id_list
+            if source_type == "es":
+                source = hit.get('_source', {})
+                memcell_event_id_list = source.get('memcell_event_id_list', [])
+                user_id = source.get('user_id', '')
+                group_id = source.get('group_id', '')
+            elif source_type == "hybrid":
+                search_source = hit.get('_search_source', 'unknown')
+                if search_source == 'keyword':
+                    source = hit.get('_source', {})
+                    memcell_event_id_list = source.get('memcell_event_id_list', [])
+                    user_id = source.get('user_id', '')
+                    group_id = source.get('group_id', '')
+                else:
+                    metadata = hit.get('metadata', {})
+                    memcell_event_id_list = metadata.get('memcell_event_id_list', [])
+                    user_id = hit.get('user_id', '')
+                    group_id = hit.get('group_id', '')
+            else:  # milvus
+                metadata = hit.get('metadata', {})
+                memcell_event_id_list = metadata.get('memcell_event_id_list', [])
+                user_id = hit.get('user_id', '')
+                group_id = hit.get('group_id', '')
+
+            if memcell_event_id_list:
+                all_memcell_event_ids.extend(memcell_event_id_list)
+
+            # 收集 user_id 和 group_id 对
+            if user_id and group_id:
+                all_user_group_pairs.append((user_id, group_id))
+
+        # 第二步：并发执行两个批量查询任务
+        memcells_task = asyncio.create_task(
+            self._batch_get_memcells(all_memcell_event_ids)
+        )
+        profiles_task = asyncio.create_task(
+            self._batch_get_group_profiles(all_user_group_pairs)
+        )
+
+        # 等待所有任务完成
+        memcells_cache, profiles_cache = await asyncio.gather(
+            memcells_task, profiles_task
+        )
+
+        # 第三步：处理搜索结果
         memories_by_group = (
             {}
         )  # {group_id: {'memories': [Memory], 'scores': [float], 'importance_evidence': dict}}
@@ -856,6 +1018,7 @@ class MemoryManager:
                 participants = source.get('participants', [])
                 hit_id = source.get('event_id', '')
                 search_source = hit.get('_search_source', 'keyword')  # 默认为关键词检索
+                event_type = source.get('type', '')
             elif source_type == "hybrid":
                 # 混合检索结果格式，需要根据_search_source字段判断
                 search_source = hit.get('_search_source', 'unknown')
@@ -872,6 +1035,7 @@ class MemoryManager:
                     summary = source.get('summary', '')
                     participants = source.get('participants', [])
                     hit_id = source.get('event_id', '')
+                    event_type = source.get('type', '')
                 else:
                     # 向量检索结果格式
                     hit_id = hit.get('id', '')
@@ -885,6 +1049,7 @@ class MemoryManager:
                     subject = metadata.get('subject', '')
                     summary = metadata.get('summary', '')
                     participants = metadata.get('participants', [])
+                    event_type = hit.get('type', '')
             else:
                 # Milvus 搜索结果格式
                 hit_id = hit.get('id', '')
@@ -899,43 +1064,30 @@ class MemoryManager:
                 summary = metadata.get('summary', '')
                 participants = metadata.get('participants', [])
                 search_source = 'vector'  # 默认为向量检索
+                event_type = hit.get('event_type', '')
 
             # 处理时间戳
-            if timestamp_raw:
-                if isinstance(timestamp_raw, datetime):
-                    timestamp = timestamp_raw.replace(tzinfo=None)
-                elif isinstance(timestamp_raw, (int, float)):
-                    try:
-                        timestamp = datetime.fromtimestamp(timestamp_raw)
-                    except Exception as e:
-                        logger.warning(
-                            f"timestamp为数字但转换失败: {timestamp_raw}, error: {e}"
-                        )
-                        timestamp = datetime.now().replace(tzinfo=None)
-                elif isinstance(timestamp_raw, str):
-                    try:
-                        timestamp = from_iso_format(timestamp_raw).replace(tzinfo=None)
-                    except Exception as e:
-                        logger.warning(
-                            f"timestamp格式转换失败: {timestamp_raw}, error: {e}"
-                        )
-                        timestamp = datetime.now().replace(tzinfo=None)
-                else:
-                    logger.warning(
-                        f"未知类型的timestamp_raw: {type(timestamp_raw)}, 使用当前时间"
-                    )
-                    timestamp = datetime.now().replace(tzinfo=None)
-            else:
-                timestamp = datetime.now().replace(tzinfo=None)
+            timestamp = from_iso_format(timestamp_raw)
 
-            # 获取 memcell 数据
+            # 从缓存中获取 memcell 数据
+            linkdoc_source_type = None
+            source_id = None
             memcells = []
             if memcell_event_id_list:
-                memcell_repo = get_bean_by_type(MemCellRawRepository)
+                # 按原始顺序从缓存中获取 memcells
                 for event_id in memcell_event_id_list:
-                    memcell = await memcell_repo.get_by_event_id(event_id)
+                    memcell = memcells_cache.get(event_id)
                     if memcell:
                         memcells.append(memcell)
+                        if (
+                            memcell.type == DataTypeEnum.DOCUMENT
+                        ):  # LinkDoc 即 Document 类型需要记录 source_type
+                            linkdoc_source_type = memcell.source_type
+                            source_id = memcell.file_id
+                        elif memcell.type == DataTypeEnum.EMAIL:
+                            source_id = (
+                                memcell.thread_id
+                            )  # 注：线程ID非独立ID，不能用于精确检索
                     else:
                         logger.warning(f"未找到 memcell: event_id={event_id}")
                         continue
@@ -948,7 +1100,7 @@ class MemoryManager:
 
             # 创建 Memory 对象
             memory = Memory(
-                memory_type="episode_memory",  # 情景记忆类型
+                memory_type="episode_summary",  # 情景记忆类型
                 user_id=user_id,
                 timestamp=timestamp,
                 ori_event_id_list=[hit_id],
@@ -958,46 +1110,34 @@ class MemoryManager:
                 group_id=group_id,
                 participants=participants,
                 memcell_event_id_list=memcell_event_id_list,
+                type=RawDataType.from_string(event_type),
+                source_type=linkdoc_source_type,
+                source_id=source_id,
+                extend={
+                    '_search_source': search_source
+                },  # 添加搜索来源信息到 extend 字段
             )
 
-            # 添加搜索来源信息到 extend 字段
-            if not hasattr(memory, 'extend') or memory.extend is None:
-                memory.extend = {}
-            memory.extend['_search_source'] = search_source
-
-            # 从 user_profiles 中读取 group_importance_evidence
+            # 从缓存中读取group_user_profile_memory获取group_importance_evidence
             group_importance_evidence = None
             if user_id and group_id:
-                try:
-                    user_profile = await UserProfile.find_one(
-                        UserProfile.user_id == user_id,
-                        UserProfile.group_id == group_id,
-                        sort=[("version", -1)],
+                group_user_profile = profiles_cache.get((user_id, group_id))
+                if (
+                    group_user_profile
+                    and hasattr(group_user_profile, 'group_importance_evidence')
+                    and group_user_profile.group_importance_evidence
+                ):
+                    group_importance_evidence = (
+                        group_user_profile.group_importance_evidence
                     )
-
-                    if user_profile:
-                        group_importance_evidence = (
-                            user_profile.profile_data.get("group_importance_evidence")
-                            if isinstance(user_profile.profile_data, dict)
-                            else None
-                        )
-                        if group_importance_evidence:
-                            if not hasattr(memory, 'extend') or memory.extend is None:
-                                memory.extend = {}
-                            memory.extend['group_importance_evidence'] = (
-                                group_importance_evidence
-                            )
-                            logger.debug(
-                                "为memory添加group_importance_evidence: user_id=%s, group_id=%s",
-                                user_id,
-                                group_id,
-                            )
-                except Exception as e:
-                    logger.warning(
-                        "读取 user_profiles 失败: user_id=%s, group_id=%s, error=%s",
-                        user_id,
-                        group_id,
-                        e,
+                    # 将group_importance_evidence添加到memory的extend字段中
+                    if not hasattr(memory, 'extend') or memory.extend is None:
+                        memory.extend = {}
+                    memory.extend['group_importance_evidence'] = (
+                        group_importance_evidence
+                    )
+                    logger.debug(
+                        f"为memory添加group_importance_evidence: user_id={user_id}, group_id={group_id}"
                     )
 
             # 按group_id分组
@@ -1010,35 +1150,12 @@ class MemoryManager:
 
             memories_by_group[group_id]['memories'].append(memory)
             memories_by_group[group_id]['scores'].append(score)  # 保存原始得分
+
             # 更新group_importance_evidence（如果当前memory有更新的证据）
             if group_importance_evidence:
                 memories_by_group[group_id][
                     'importance_evidence'
                 ] = group_importance_evidence
-
-        def calculate_importance_score(importance_evidence):
-            """计算群组重要性得分"""
-            if not importance_evidence or not isinstance(importance_evidence, dict):
-                return 0.0
-
-            evidence_list = importance_evidence.get('evidence_list', [])
-            if not evidence_list:
-                return 0.0
-
-            total_speak_count = 0
-            total_refer_count = 0
-            total_conversation_count = 0
-
-            for evidence in evidence_list:
-                if isinstance(evidence, dict):
-                    total_speak_count += evidence.get('speak_count', 0)
-                    total_refer_count += evidence.get('refer_count', 0)
-                    total_conversation_count += evidence.get('conversation_count', 0)
-
-            if total_conversation_count == 0:
-                return 0.0
-
-            return (total_speak_count + total_refer_count) / total_conversation_count
 
         # 为每个group内的memories按时间戳排序，并计算重要性得分
         group_scores = []
@@ -1049,7 +1166,7 @@ class MemoryManager:
             )
 
             # 计算重要性得分
-            importance_score = calculate_importance_score(
+            importance_score = self._calculate_importance_score(
                 group_data['importance_evidence']
             )
             group_scores.append((group_id, importance_score))

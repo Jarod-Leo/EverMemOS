@@ -150,11 +150,10 @@ class GroupChatMemorizer:
                     "tags": meta.get("tags", []),
                 }
 
-                # 获取 conversation-meta API 地址（在 memorize API 的基础上构建）
-                # 假设 memorize API 是 http://host:port/api/v3/agentic/memorize
-                # 则 conversation-meta API 是 http://host:port/api/v3/agentic/conversation-meta
-                base_url = self.api_url.rsplit('/', 1)[0]  # 移除最后的 /memorize
-                conversation_meta_url = f"{base_url}/conversation-meta"
+                # 获取 conversation-meta API 地址（在 memories API 的基础上构建）
+                # 假设 memories API 是 http://host:port/api/v1/memories
+                # 则 conversation-meta API 是 http://host:port/api/v1/memories/conversation-meta
+                conversation_meta_url = f"{self.api_url}/conversation-meta"
 
                 logger.info(f"正在保存对话元数据到: {conversation_meta_url}")
                 logger.info(f"Scene: {self.scene}, Group ID: {group_id}")
@@ -205,9 +204,6 @@ class GroupChatMemorizer:
                         request_data["group_id"] = group_id
                     if group_name:
                         request_data["group_name"] = group_name
-                    # 从消息中获取 scene，如果没有则使用默认值
-                    scene = message.get("scene") or self.scene
-                    request_data["scene"] = scene
 
                     # 发送请求
                     try:

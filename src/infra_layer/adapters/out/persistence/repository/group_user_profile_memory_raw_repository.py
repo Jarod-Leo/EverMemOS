@@ -163,6 +163,86 @@ class GroupUserProfileMemoryRawRepository(BaseRepository[GroupUserProfileMemory]
             logger.error("❌ 根据用户ID和群组ID获取群组用户档案失败: %s", e)
             return None
 
+    async def batch_get_by_user_groups(
+        self,
+        user_group_pairs: List[Tuple[str, str]],
+        session: Optional[AsyncIOMotorClientSession] = None,
+    ) -> Dict[Tuple[str, str], Optional[GroupUserProfileMemory]]:
+        """
+        批量根据用户ID和群组ID获取群组用户档案记忆
+
+        Args:
+            user_group_pairs: (user_id, group_id) 元组列表
+            session: 可选的 MongoDB 会话，用于事务支持
+
+        Returns:
+            Dict[(user_id, group_id), GroupUserProfileMemory]: 映射字典
+        """
+        try:
+            if not user_group_pairs:
+                return {}
+
+            # 去重
+            unique_pairs = list(set(user_group_pairs))
+            logger.debug(
+                "批量获取群组用户档案: 总数 %d (去重前: %d)",
+                len(unique_pairs),
+                len(user_group_pairs),
+            )
+
+            # 构造查询条件：查询所有 (user_id, group_id) 对的最新版本
+            # 使用聚合管道来实现批量查询最新版本
+            pipeline = [
+                {
+                    "$match": {
+                        "$or": [
+                            {"user_id": user_id, "group_id": group_id}
+                            for user_id, group_id in unique_pairs
+                        ]
+                    }
+                },
+                # 按 user_id, group_id, version 分组，获取每组的最新版本
+                {"$sort": {"user_id": 1, "group_id": 1, "version": -1}},
+                {
+                    "$group": {
+                        "_id": {"user_id": "$user_id", "group_id": "$group_id"},
+                        "doc": {"$first": "$$ROOT"},
+                    }
+                },
+                {"$replaceRoot": {"newRoot": "$doc"}},
+            ]
+
+            # 执行聚合查询
+            results = (
+                await self.model.get_pymongo_collection()
+                .aggregate(pipeline, session=session)
+                .to_list(length=None)
+            )
+
+            # 构建结果字典
+            result_dict = {}
+            for doc in results:
+                if not doc:
+                    continue
+                memory = GroupUserProfileMemory.model_validate(doc)
+                key = (memory.user_id, memory.group_id)
+                result_dict[key] = memory
+
+            # 填充未找到的记录为 None
+            for pair in unique_pairs:
+                if pair not in result_dict:
+                    result_dict[pair] = None
+
+            logger.debug(
+                "✅ 批量获取群组用户档案完成: 成功获取 %d 个",
+                len([v for v in result_dict.values() if v is not None]),
+            )
+
+            return result_dict
+        except Exception as e:
+            logger.error("❌ 批量获取群组用户档案失败: %s", e)
+            return {}
+
     async def update_by_user_group(
         self,
         user_id: str,

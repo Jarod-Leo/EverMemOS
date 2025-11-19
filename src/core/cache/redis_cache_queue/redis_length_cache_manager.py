@@ -329,6 +329,18 @@ class RedisLengthCacheManager:
             logger.error("清空队列失败: key=%s, error=%s", key, str(e))
             return False
 
+    async def delete(self, key: str) -> bool:
+        """
+        删除指定的缓存键（clear_queue 的别名）
+
+        Args:
+            key: 缓存键名
+
+        Returns:
+            bool: 操作是否成功
+        """
+        return await self.clear_queue(key)
+
     async def cleanup_excess(self, key: str) -> int:
         """
         手动清理指定队列中超出长度限制的数据
@@ -587,6 +599,10 @@ class DefaultRedisLengthCacheManager:
     async def clear_queue(self, key: str) -> bool:
         manager = await self._get_manager()
         return await manager.clear_queue(key)
+
+    async def delete(self, key: str) -> bool:
+        manager = await self._get_manager()
+        return await manager.delete(key)
 
     async def cleanup_excess(self, key: str) -> int:
         manager = await self._get_manager()

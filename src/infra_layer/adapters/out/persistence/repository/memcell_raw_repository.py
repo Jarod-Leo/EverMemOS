@@ -6,8 +6,9 @@ MemCell 原生 CRUD 仓库
 """
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Type
 from bson import ObjectId
+from pydantic import BaseModel
 from beanie.operators import And, GTE, LT, Eq, RegEx, Or
 from motor.motor_asyncio import AsyncIOMotorClientSession
 from core.observation.logger import get_logger
@@ -59,6 +60,68 @@ class MemCellRawRepository(BaseRepository[MemCell]):
         except Exception as e:
             logger.error("❌ 根据 event_id 获取 MemCell 失败: %s", e)
             return None
+
+    async def get_by_event_ids(
+        self, event_ids: List[str], projection_model: Optional[Type[BaseModel]] = None
+    ) -> Dict[str, Any]:
+        """
+        根据 event_id 列表批量获取 MemCell
+
+        Args:
+            event_ids: 事件 ID 列表
+            projection_model: Pydantic 投影模型类，用于指定返回的字段
+                             例如：传入一个只包含部分字段的 Pydantic 模型
+                             None 表示返回完整的 MemCell 对象
+
+        Returns:
+            Dict[event_id, MemCell | ProjectionModel]：event_id 到 MemCell（或投影模型）的映射字典
+            未找到的 event_id 不会出现在字典中
+        """
+        try:
+            if not event_ids:
+                logger.debug("⚠️  event_ids 列表为空，返回空字典")
+                return {}
+
+            # 将 event_id 列表转换为 ObjectId 列表
+            object_ids = []
+            valid_event_ids = []  # 保存有效的原始 event_id 字符串
+            for event_id in event_ids:
+                try:
+                    object_ids.append(ObjectId(event_id))
+                    valid_event_ids.append(event_id)
+                except Exception as e:
+                    logger.warning("⚠️  无效的 event_id: %s, 错误: %s", event_id, e)
+
+            if not object_ids:
+                logger.debug("⚠️  没有有效的 event_id，返回空字典")
+                return {}
+
+            # 构建查询
+            query = self.model.find({"_id": {"$in": object_ids}})
+
+            # 应用字段投影
+            # 使用 Beanie 的 .project() 方法，传入 projection_model 参数
+            if projection_model:
+                query = query.project(projection_model=projection_model)
+
+            # 批量查询
+            results = await query.to_list()
+
+            # 创建 event_id 到 MemCell（或投影模型）的映射字典
+            result_dict = {str(result.id): result for result in results}
+
+            logger.debug(
+                "✅ 根据 event_ids 批量获取 MemCell 成功: 请求 %d 个, 找到 %d 个, 投影: %s",
+                len(event_ids),
+                len(result_dict),
+                "有" if projection_model else "无",
+            )
+
+            return result_dict
+
+        except Exception as e:
+            logger.error("❌ 根据 event_ids 批量获取 MemCell 失败: %s", e)
+            return {}
 
     async def append_memcell(
         self, memcell: MemCell, session: Optional[AsyncIOMotorClientSession] = None
@@ -186,7 +249,7 @@ class MemCellRawRepository(BaseRepository[MemCell]):
     ) -> List[MemCell]:
         """
         根据用户 ID 和时间范围查询 MemCell
-        
+
         同时检查 user_id 字段和 participants 数组，只要 user_id 在其中之一即可
 
         Args:
@@ -206,8 +269,10 @@ class MemCellRawRepository(BaseRepository[MemCell]):
             query = self.model.find(
                 And(
                     Or(
-                    Eq(MemCell.user_id, user_id),
-                        Eq(MemCell.participants, user_id)  # MongoDB 会检查数组中是否包含该值
+                        Eq(MemCell.user_id, user_id),
+                        Eq(
+                            MemCell.participants, user_id
+                        ),  # MongoDB 会检查数组中是否包含该值
                     ),
                     GTE(MemCell.timestamp, start_time),
                     LT(MemCell.timestamp, end_time),

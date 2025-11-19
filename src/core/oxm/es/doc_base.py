@@ -1,5 +1,5 @@
 import typing
-from typing import Type, Any, Dict
+from typing import Type, Any, Dict, Set
 
 import os
 from fnmatch import fnmatch
@@ -22,8 +22,45 @@ class DocBase(AsyncDocument):
 class AliasSupportDoc(DocBase):
     """支持别名模式的文档类，增强了日期字段的时区处理"""
 
-    # 指定用于自动填充 meta.id 的字段名（如：MongoDB 主键字段），未设置则不启用
-    ID_SOURCE_FIELD: typing.Optional[str] = None
+    class CustomMeta:
+        # 指定用于自动填充 meta.id 的字段名（如：MongoDB 主键字段），未设置则不启用
+        id_source_field: typing.Optional[str] = None
+        # 缓存Date类型字段名的集合，用于快速判断（动态设置，不需要预先定义）
+        # date_fields: typing.Optional[Set[str]] = None
+
+    @classmethod
+    def _init_date_fields_cache(cls) -> Set[str]:
+        """
+        初始化Date字段缓存，收集类中所有Date类型的字段名
+
+        Returns:
+            Date类型字段名的集合
+        """
+        # 从 CustomMeta 中获取缓存的 date_fields
+        custom_meta = getattr(cls, 'CustomMeta', None)
+        if custom_meta is not None:
+            existing_cache = getattr(custom_meta, 'date_fields', None)
+            if existing_cache is not None:
+                return existing_cache
+
+        date_fields = set()
+        # 遍历类的所有属性，找出Date类型的字段
+        for attr_name in dir(cls):
+            if attr_name.startswith('_'):
+                continue
+            try:
+                attr_value = getattr(cls, attr_name)
+                if isinstance(attr_value, e_field.Date):
+                    date_fields.add(attr_name)
+            except (AttributeError, TypeError):
+                # 忽略无法获取或不是字段的属性
+                continue
+
+        # 动态设置到 CustomMeta 中
+        if custom_meta is not None:
+            setattr(custom_meta, 'date_fields', date_fields)
+
+        return date_fields
 
     def _process_date_field(self, field_name: str, field_value: Any) -> Any:
         """
@@ -36,13 +73,11 @@ class AliasSupportDoc(DocBase):
         Returns:
             处理后的字段值
         """
-        # 检查字段是否是Date类型
-        if hasattr(self.__class__, field_name):
-            field_obj = getattr(self.__class__, field_name)
-            if isinstance(field_obj, e_field.Date) and isinstance(
-                field_value, datetime
-            ):
-                return to_timezone(field_value)
+        # 使用缓存的Date字段集合进行快速判断
+        # 通过调用_init_date_fields_cache确保获得非None的Set[str]
+        date_fields = self.__class__._init_date_fields_cache()
+        if field_name in date_fields and isinstance(field_value, datetime):
+            return to_timezone(field_value)
         return field_value
 
     def __setattr__(self, name: str, value: Any) -> None:
@@ -55,6 +90,10 @@ class AliasSupportDoc(DocBase):
 
     def __init__(self, meta: Dict[str, Any] = None, **kwargs: Any):
         """重写构造函数：仅基于显式 ID_SOURCE_FIELD 设置 meta.id，缺失即报错"""
+
+        # 初始化Date字段缓存（首次调用时会真正初始化，之后直接使用缓存）
+        self.__class__._init_date_fields_cache()
+
         raw_kwargs = dict(kwargs)
 
         # 处理kwargs中的日期字段
@@ -65,7 +104,14 @@ class AliasSupportDoc(DocBase):
             )
 
         # 基于 ID_SOURCE_FIELD 严格设置 meta.id（无启发式），并兼容从ES构造（meta带_id）
-        id_source_field = getattr(self.__class__, "ID_SOURCE_FIELD", None)
+        # 从 CustomMeta 中获取 id_source_field 配置
+        custom_meta_class = getattr(self.__class__, 'CustomMeta', None)
+
+        id_source_field = (
+            getattr(custom_meta_class, 'id_source_field', None)
+            if custom_meta_class
+            else None
+        )
         merged_meta: Dict[str, Any] = {} if meta is None else dict(meta)
         # 提取已提供的meta id（来自ES加载场景）
         given_meta_id = None
