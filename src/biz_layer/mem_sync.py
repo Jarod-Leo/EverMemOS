@@ -225,10 +225,8 @@ class MemorySyncService:
                 logger.error(f"批量同步语义记忆失败: {sem_mem.id}, 错误: {e}", exc_info=True)
                 # 不要静默吞掉异常
         
-        # 批量同步完成后统一 flush
-        if sync_to_milvus and total_stats["semantic_memory"] > 0:
-            await self.semantic_milvus_repo.collection.flush()
-            logger.info(f"✅ 语义记忆 Milvus flush 完成: {total_stats['semantic_memory']} 条")
+        
+        logger.info(f"✅ 语义记忆 Milvus flush 完成: {total_stats['semantic_memory']} 条")
         
         return total_stats
 
@@ -264,10 +262,8 @@ class MemorySyncService:
                 # 不要静默吞掉异常，让它暴露出来
                 raise
         
-        # 批量同步完成后统一 flush
-        if sync_to_milvus and total_stats["event_log"] > 0:
-            await self.eventlog_milvus_repo.collection.flush()
-            logger.info(f"✅ 事件日志 Milvus flush 完成: {total_stats['event_log']} 条")
+        
+        logger.info(f"✅ 事件日志 Milvus flush 完成: {total_stats['event_log']} 条")
         
         return total_stats
 

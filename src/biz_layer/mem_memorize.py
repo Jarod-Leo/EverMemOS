@@ -573,8 +573,7 @@ async def save_memory_docs(
                     getattr(saved_doc, "event_id", None),
                 )
 
-        if saved_episodic:
-            await episodic_milvus_repo.flush()
+    
         saved_result[MemoryType.EPISODIC_MEMORY] = saved_episodic
 
     # Semantic
