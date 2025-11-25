@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional
 
-from api_specs.types import MemoryType, Memory, MemCell
+from api_specs.memory_types import MemoryType, Memory, MemCell
 
 
 @dataclass

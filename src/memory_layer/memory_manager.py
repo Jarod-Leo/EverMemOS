@@ -10,7 +10,7 @@ from .llm.llm_provider import LLMProvider
 from .memcell_extractor.conv_memcell_extractor import ConvMemCellExtractor
 from .memcell_extractor.base_memcell_extractor import RawData
 from .memcell_extractor.conv_memcell_extractor import ConversationMemCellExtractRequest
-from api_specs.types import MemCell, RawDataType, MemoryType
+from api_specs.memory_types import MemCell, RawDataType, MemoryType
 from .memory_extractor.episode_memory_extractor import (
     EpisodeMemoryExtractor,
     EpisodeMemoryExtractRequest,
@@ -30,27 +30,6 @@ from .memcell_extractor.base_memcell_extractor import StatusResult
 
 
 logger = get_logger(__name__)
-
-
-@dataclass
-class MemorizeRequest:
-    history_raw_data_list: list[RawData]
-    new_raw_data_list: list[RawData]
-    raw_data_type: RawDataType
-    # 整个group全量的user_id列表
-    user_id_list: List[str]
-    group_id: Optional[str] = None
-    group_name: Optional[str] = None
-    current_time: Optional[datetime] = None
-    # 可选的提取控制参数
-    enable_semantic_extraction: bool = True  # 是否提取语义记忆
-    enable_event_log_extraction: bool = True  # 是否提取事件日志
-
-
-@dataclass
-class MemorizeOfflineRequest:
-    memorize_from: datetime
-    memorize_to: datetime
 
 
 class MemoryManager:

@@ -19,7 +19,7 @@ from common_utils.datetime_utils import (
     get_now_with_timezone,
 )
 from ..llm.llm_provider import LLMProvider
-from api_specs.types import RawDataType
+from api_specs.memory_types import RawDataType
 from ..prompts.zh.conv_prompts import CONV_BOUNDARY_DETECTION_PROMPT
 
 from ..prompts.eval.conv_prompts import (

@@ -10,8 +10,8 @@
 """
 
 import time
-from memory_layer.memory_manager import MemorizeRequest
-from api_specs.types import MemCell, RawDataType
+from api_specs.dtos.memory_command import MemorizeRequest
+from api_specs.memory_types import MemCell, RawDataType
 from memory_layer.memory_extractor.profile_memory_extractor import ProfileMemory
 from memory_layer.memory_extractor.group_profile_memory_extractor import (
     GroupProfileMemory,
@@ -64,7 +64,7 @@ from infra_layer.adapters.out.persistence.document.memory.semantic_memory_record
 from infra_layer.adapters.out.persistence.document.memory.event_log_record import (
     EventLogRecord,
 )
-from api_specs.types import RawDataType
+from api_specs.memory_types import RawDataType
 
 logger = get_logger(__name__)
 

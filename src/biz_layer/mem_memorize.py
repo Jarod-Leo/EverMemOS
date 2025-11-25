@@ -3,9 +3,15 @@ import random
 import time
 import json
 import traceback
-from memory_layer.memory_manager import MemorizeRequest, MemorizeOfflineRequest
+from api_specs.dtos.memory_command import MemorizeRequest, MemorizeOfflineRequest
 from memory_layer.memory_manager import MemoryManager
-from api_specs.types import MemoryType, MemCell, Memory, RawDataType, SemanticMemoryItem
+from api_specs.memory_types import (
+    MemoryType,
+    MemCell,
+    Memory,
+    RawDataType,
+    SemanticMemoryItem,
+)
 from memory_layer.memory_extractor.event_log_extractor import EventLog
 from memory_layer.memory_extractor.profile_memory_extractor import ProfileMemory
 from core.di import get_bean_by_type
@@ -35,7 +41,7 @@ from infra_layer.adapters.out.persistence.repository.group_profile_raw_repositor
     GroupProfileRawRepository,
 )
 from biz_layer.conversation_data_repo import ConversationDataRepository
-from api_specs.types import RawDataType
+from api_specs.memory_types import RawDataType
 from typing import List, Dict, Optional, Any
 from dataclasses import dataclass
 import uuid

@@ -15,7 +15,7 @@ from infra_layer.adapters.out.search.milvus.memory.event_log_collection import (
 from infra_layer.adapters.out.persistence.document.memory.event_log_record import (
     EventLogRecord as MongoEventLogRecord,
 )
-from api_specs.types import RawDataType
+from api_specs.memory_types import RawDataType
 
 logger = get_logger(__name__)
 

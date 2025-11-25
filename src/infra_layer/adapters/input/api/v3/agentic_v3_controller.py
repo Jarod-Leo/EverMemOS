@@ -14,7 +14,7 @@ from core.di import get_bean_by_type
 from core.interface.controller.base_controller import BaseController, post
 from core.constants.errors import ErrorCode, ErrorStatus
 from agentic_layer.memory_manager import MemoryManager
-from api_specs.converter import _handle_conversation_format
+from api_specs.request_converter import handle_conversation_format
 from api_specs.dtos.memory_query import ConversationMetaRequest, UserDetail
 from infra_layer.adapters.input.api.mapper.group_chat_converter import (
     convert_simple_message_to_memorize_input,
@@ -191,7 +191,7 @@ class AgenticV3Controller(BaseController):
 
             # 4. 转换为 MemorizeRequest 对象并调用 memory_manager
             logger.info("开始处理记忆请求")
-            memorize_request = await _handle_conversation_format(memorize_input)
+            memorize_request = await handle_conversation_format(memorize_input)
             memories = await self.memory_manager.memorize(memorize_request)
 
             # 5. 返回统一格式的响应

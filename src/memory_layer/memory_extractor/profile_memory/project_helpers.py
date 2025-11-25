@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set
 
 from core.observation.logger import get_logger
 
-from api_specs.profile_memory.types import ProjectInfo
+from memory_layer.memory_extractor.profile_memory.types import ProjectInfo
 from .value_helpers import (
     extract_values_with_evidence,
     merge_value_with_evidences_lists,

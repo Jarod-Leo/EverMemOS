@@ -19,7 +19,7 @@ from ...prompts import (
     CONVERSATION_PROFILE_PART2_EXTRACTION_PROMPT,
     CONVERSATION_PROFILE_PART3_EXTRACTION_PROMPT,
 )
-from api_specs.types import MemoryType, MemCell
+from api_specs.memory_types import MemoryType, MemCell
 from .conversation import (
     annotate_relative_dates,
     build_conversation_text,
@@ -45,7 +45,7 @@ from .evidence_utils import (
 )
 from .project_helpers import filter_project_items_by_type
 from .merger import convert_important_info_to_evidence
-from api_specs.profile_memory.types import (
+from memory_layer.memory_extractor.profile_memory.types import (
     GroupImportanceEvidence,
     ImportanceEvidence,
     ProfileMemory,

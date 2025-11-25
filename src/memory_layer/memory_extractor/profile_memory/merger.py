@@ -11,7 +11,10 @@ from memory_layer.llm.llm_provider import LLMProvider
 from .data_normalize import merge_single_profile, project_to_dict
 from .project_helpers import merge_projects_participated
 from .skill_helpers import merge_skill_lists_keep_highest_level
-from api_specs.profile_memory.types import ProfileMemory, ImportanceEvidence
+from memory_layer.memory_extractor.profile_memory.types import (
+    ProfileMemory,
+    ImportanceEvidence,
+)
 from .value_helpers import (
     merge_value_with_evidences_lists,
     merge_value_with_evidences_lists_keep_highest_level,

@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
-from api_specs.types import Memory, MemoryType
+from api_specs.memory_types import Memory, MemoryType
 from memory_layer.memory_extractor.base_memory_extractor import MemoryExtractRequest
 
 

@@ -11,9 +11,9 @@ import time
 from typing import Dict, Any
 from dataclasses import dataclass
 
-from api_specs.types import Memory, RawDataType
+from api_specs.memory_types import Memory, RawDataType
 from biz_layer.mem_memorize import memorize
-from memory_layer.memory_manager import MemorizeRequest
+from api_specs.dtos.memory_command import MemorizeRequest
 from .fetch_mem_service import get_fetch_memory_service
 from api_specs.dtos.memory_query import (
     FetchMemRequest,

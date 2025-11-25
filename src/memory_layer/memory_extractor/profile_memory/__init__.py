@@ -1,6 +1,6 @@
 """Profile memory extraction package."""
 
-from api_specs.profile_memory.types import (
+from memory_layer.memory_extractor.profile_memory.types import (
     GroupImportanceEvidence,
     ImportanceEvidence,
     ProfileMemory,

@@ -194,44 +194,6 @@ class Memory:
 
 
 @dataclass
-class SemanticMemory:
-    """
-    语义记忆数据模型
-
-    用于存储从情景记忆中提取的语义知识
-    """
-
-    user_id: str
-    content: str
-    knowledge_type: str = "knowledge"
-    source_episodes: List[str] = None
-    created_at: datetime.datetime = None
-    group_id: Optional[str] = None
-    participants: Optional[List[str]] = None
-    metadata: Optional[Dict[str, Any]] = None
-
-    def __post_init__(self):
-        if self.source_episodes is None:
-            self.source_episodes = []
-        if self.created_at is None:
-            self.created_at = datetime.datetime.now()
-        if self.metadata is None:
-            self.metadata = {}
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "user_id": self.user_id,
-            "content": self.content,
-            "knowledge_type": self.knowledge_type,
-            "source_episodes": self.source_episodes,
-            "created_at": to_iso_format(self.created_at),
-            "group_id": self.group_id,
-            "participants": self.participants,
-            "metadata": self.metadata,
-        }
-
-
-@dataclass
 class SemanticMemoryItem:
     """
     语义记忆联想项目

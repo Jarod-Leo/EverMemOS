@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 from datetime import datetime
-from api_specs.types import Memory
+from api_specs.memory_types import Memory
 from api_specs.memory_models import MemoryType, Metadata, MemoryModel, RetrieveMethod
 
 
