@@ -34,13 +34,12 @@
 | Full-text | 94.93      | 90.43     | 87.95    | 71.88       | 91.21   | 20281          |                                              | gpt-4.1-mini    |
 | EverMemOS | 96.08      | 91.13     | 89.72    | 70.83       | 92.32   | 2298           | open-source EverMemOS v1.0.0 companion | gpt-4.1-mini    |
 
-
-
 | Longmemeval | Single-session-user  | Single-session-assistant  | Single-session-preference  | Multi-session  | Knowledge-update  | Temporal-reasoning  | Overall |
 |-------------|----------------------|---------------------------|----------------------------|----------------|-------------------|---------------------|---------|
 | EverMemOS   | 100.00               | 78.57                     | 96.67                      | 78.45          | 87.18             | 71.18               | 82.00   |
 
 
+> **关于复现性的说明**：为了保证测评的可复现性，我们提供了全量的方法的评估中间数据。您可以访问 [EverMind-AI/EverMemOS_Eval_Results](https://huggingface.co/datasets/EverMind-AI/EverMemOS_Eval_Results) 获取数据。
 
 
 

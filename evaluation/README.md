@@ -35,11 +35,11 @@ Our adapter implementations are based on:
 | EverMemOS | 96.08      | 91.13     | 89.72    | 70.83       | 92.32   | 2298           | open-source EverMemOS v1.0.0 companion | gpt-4.1-mini    |
 
 
-
 | Longmemeval | Single-session-user  | Single-session-assistant  | Single-session-preference  | Multi-session  | Knowledge-update  | Temporal-reasoning  | Overall |
 |-------------|----------------------|---------------------------|----------------------------|----------------|-------------------|---------------------|---------|
 | EverMemOS   | 100.00               | 78.57                     | 96.67                      | 78.45          | 87.18             | 71.18               | 82.00   |
 
+> **Note on Reproducibility**: To ensure the reproducibility of our evaluation, we provide full evaluation intermediate data for all methods. You can access the data at [EverMind-AI/EverMemOS_Eval_Results](https://huggingface.co/datasets/EverMind-AI/EverMemOS_Eval_Results).
 
 
 ## 🌟 Key Features
