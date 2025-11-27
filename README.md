@@ -1,17 +1,16 @@
 <div align="center">
 
 <h1>
-  <img src="figs/logo.png" alt="EverMemOS Logo" height="40" style="vertical-align: middle; margin-right: 12px;"/>
   EverMemOS
 </h1>
 
 <p>
   <a href="https://everm.ai/" target="_blank">
-    <img alt="Website" src="https://img.shields.io/badge/Website-everm.ai-4A90E2?style=flat-square&logo=link&logoColor=white" />
+    <img src="figs/evermind_logo.svg" alt="EverMind" height="34" />
   </a>
 </p>
 
-<p><strong>Let every interaction be driven by understanding.</strong> · Enterprise-Grade Intelligent Memory System</p>
+<p><strong>Let every interaction be driven by understanding </strong> · Enterprise-Grade Intelligent Memory System</p>
 
 <p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10+-0084FF?style=flat-square&logo=python&logoColor=white" />
@@ -184,19 +183,15 @@ Memory perception layer: quickly recalls relevant memories through multi-round r
   Batch concurrent processing with exponential backoff retry, maintaining stability under high throughput  
   Reorders candidate memories by deep relevance, prioritizing the most critical information
 
-#### 🤖 Agentic Intelligent Retrieval
-
-- **🎓 LLM-Guided Multi-Round Recall**  
-  For insufficient cases, generate 2-3 complementary queries, retrieve and fuse in parallel
-  Automatically identifies missing information, proactively filling retrieval blind spots
-
-- **🔀 Multi-Query Parallel Strategy**  
-  When a single query cannot fully express intent, generate multiple complementary perspective queries  
-  Enhance coverage of complex intents through multi-path RRF fusion
+#### 🚀 Flexible Retrieval Strategies
 
 - **⚡ Lightweight Fast Mode**  
-  For latency-sensitive scenarios, skip LLM calls and use RRF-fused hybrid retrieval  
-  Flexibly balance between speed and quality
+  For latency-sensitive scenarios, skip LLM calls and use pure keyword retrieval (BM25)  
+  Achieve a faster response speed
+
+- **🎓 Agentic Multi-Round Recall**  
+  For insufficient cases, generate 2-3 complementary queries, retrieve and fuse in parallel  
+  Enhance coverage of complex intents through multi-path RRF fusion
 
 #### 🧠 Reasoning Fusion
 
@@ -275,6 +270,7 @@ cp env.template .env
 # Edit the .env file and fill in the necessary configurations:
 #   - LLM_API_KEY: Enter your LLM API Key (for memory extraction)
 #   - DEEPINFRA_API_KEY: Enter your DeepInfra API Key (for Embedding and Rerank)
+# For detailed configuration instructions, please refer to: [Configuration Guide](docs/usage/CONFIGURATION_GUIDE.md)
 ```
 
 **Docker Services**:
@@ -488,7 +484,7 @@ curl -X POST http://localhost:8001/api/v3/agentic/memorize \
 **API Features**:
 
 - **`/api/v3/agentic/memorize`**: Store single message memory
-- **`/api/v3/agentic/retrieve_lightweight`**: Lightweight memory retrieval (Embedding + BM25 + RRF)
+- **`/api/v3/agentic/retrieve_lightweight`**: Lightweight memory retrieval (fast retrieval mode)
 - **`/api/v3/agentic/retrieve_agentic`**: Agentic memory retrieval (LLM-guided multi-round intelligent retrieval)
 
 For more API details, please refer to [Agentic V3 API Documentation](docs/api_docs/agentic_v3_api.md).
@@ -644,6 +640,7 @@ For complete format specifications, please refer to [Group Chat Format Specifica
 
 For detailed installation, configuration, and usage instructions, please refer to:
 - 📚 [Quick Start Guide](docs/dev_docs/getting_started.md) - Complete installation and configuration steps
+- ⚙️ [Configuration Guide](docs/usage/CONFIGURATION_GUIDE.md) - Detailed environment variables and service configuration
 - 📖 [API Usage Guide](docs/dev_docs/api_usage_guide.md) - API endpoints and data format details
 - 🔧 [Development Guide](docs/dev_docs/development_guide.md) - Architecture design and development best practices
 - 🚀 [Bootstrap Usage](docs/dev_docs/bootstrap_usage.md) - Script runner usage instructions
