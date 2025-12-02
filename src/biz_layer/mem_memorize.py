@@ -338,10 +338,324 @@ from biz_layer.mem_db_operations import (
     _convert_projects_participated_list,
     _convert_group_profile_raw_to_memory_format,
 )
+from typing import Tuple
 
 
 def if_memorize(memcell: MemCell) -> bool:
     return True
+
+
+# ==================== MemCell 处理业务逻辑 ====================
+
+@dataclass
+class ExtractionState:
+    """记忆提取状态，存储中间结果"""
+    memcell: MemCell
+    request: MemorizeRequest
+    current_time: datetime
+    scene: str
+    is_assistant_scene: bool
+    participants: List[str]
+    group_episode: Optional[Memory] = None
+    group_episode_memories: List[Memory] = None
+    episode_memories: List[Memory] = None
+    parent_docs_map: Dict[str, Any] = None
+    
+    def __post_init__(self):
+        self.group_episode_memories = []
+        self.episode_memories = []
+        self.parent_docs_map = {}
+
+
+async def process_memory_extraction(
+    memcell: MemCell,
+    request: MemorizeRequest,
+    memory_manager: MemoryManager,
+    current_time: datetime,
+):
+    """
+    记忆提取主流程
+    
+    从 MemCell 开始，提取 Episode、Semantic、EventLog 等所有记忆类型。
+    """
+    # 1. 初始化状态
+    state = await _init_extraction_state(memcell, request, current_time)
+    
+    # 2. 提取 Episodes
+    await _extract_episodes(state, memory_manager)
+    
+    # 3. 更新 MemCell 并触发聚类
+    await _update_memcell_and_cluster(state)
+    
+    # 4. 保存和提取后续记忆
+    if if_memorize(memcell):
+        await _process_memories(state, memory_manager)
+
+
+async def _init_extraction_state(
+    memcell: MemCell,
+    request: MemorizeRequest,
+    current_time: datetime
+) -> ExtractionState:
+    """初始化提取状态"""
+    conversation_meta_repo = get_bean_by_type(ConversationMetaRawRepository)
+    conversation_meta = await conversation_meta_repo.get_by_group_id(request.group_id)
+    scene = conversation_meta.scene if conversation_meta and conversation_meta.scene else "assistant"
+    is_assistant_scene = scene.lower() in ["assistant", "companion"]
+    participants = list(set(memcell.participants)) if memcell.participants else []
+    
+    return ExtractionState(
+        memcell=memcell,
+        request=request,
+        current_time=current_time,
+        scene=scene,
+        is_assistant_scene=is_assistant_scene,
+        participants=participants,
+    )
+
+
+async def _extract_episodes(state: ExtractionState, memory_manager: MemoryManager):
+    """提取群组和个人 Episodes"""
+    if state.is_assistant_scene:
+        logger.info("[MemCell处理] assistant 场景，仅提取群组 Episode")
+        tasks = [_create_episode_task(state, memory_manager, None)]
+    else:
+        logger.info(f"[MemCell处理] 非 assistant 场景，提取群组 + {len(state.participants)} 个个人 Episode")
+        tasks = [_create_episode_task(state, memory_manager, None)]
+        tasks.extend([
+            _create_episode_task(state, memory_manager, uid)
+            for uid in state.participants
+        ])
+    
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    _process_episode_results(state, results)
+
+
+def _create_episode_task(state: ExtractionState, memory_manager: MemoryManager, user_id: Optional[str]):
+    """创建 Episode 提取任务"""
+    return memory_manager.extract_memory(
+        memcell=state.memcell,
+        memory_type=MemoryType.EPISODIC_MEMORY,
+        user_id=user_id,
+        group_id=state.request.group_id,
+        group_name=state.request.group_name,
+    )
+
+
+def _process_episode_results(state: ExtractionState, results: List[Any]):
+    """处理 Episode 提取结果"""
+    # 群组 Episode
+    group_episode = results[0] if results else None
+    if isinstance(group_episode, Exception):
+        logger.error(f"[MemCell处理] ❌ 群组 Episode 异常: {group_episode}")
+        group_episode = None
+    elif group_episode:
+        group_episode.ori_event_id_list = [state.memcell.event_id]
+        group_episode.memcell_event_id_list = [state.memcell.event_id]
+        state.group_episode_memories.append(group_episode)
+        state.group_episode = group_episode
+        state.memcell.episode = group_episode.episode
+        state.memcell.subject = group_episode.subject
+        logger.info("[MemCell处理] ✅ 群组 Episode 提取成功")
+    
+    # 个人 Episodes
+    if not state.is_assistant_scene:
+        for user_id, result in zip(state.participants, results[1:]):
+            if isinstance(result, Exception):
+                logger.error(f"[MemCell处理] ❌ 个人 Episode 异常: user_id={user_id}")
+                continue
+            if result:
+                result.ori_event_id_list = [state.memcell.event_id]
+                result.memcell_event_id_list = [state.memcell.event_id]
+                state.episode_memories.append(result)
+                logger.info(f"[MemCell处理] ✅ 个人 Episode 成功: user_id={user_id}")
+
+
+async def _update_memcell_and_cluster(state: ExtractionState):
+    """更新 MemCell 的 episode 字段并触发聚类"""
+    if not state.request.group_id or not state.group_episode:
+        return
+    
+    # 更新 MemCell
+    try:
+        memcell_repo = get_bean_by_type(MemCellRawRepository)
+        await memcell_repo.update_by_event_id(
+            event_id=state.memcell.event_id,
+            update_data={"episode": state.group_episode.episode, "subject": state.group_episode.subject}
+        )
+        logger.info(f"[MemCell处理] ✅ 更新 MemCell episode: {state.memcell.event_id}")
+    except Exception as e:
+        logger.error(f"[MemCell处理] ❌ 更新 MemCell 失败: {e}")
+    
+    # 异步触发聚类
+    try:
+        memcell_for_clustering = MemCell(
+            event_id=state.memcell.event_id,
+            user_id_list=state.memcell.user_id_list,
+            original_data=state.memcell.original_data,
+            timestamp=state.memcell.timestamp,
+            summary=state.memcell.summary,
+            group_id=state.memcell.group_id,
+            group_name=state.memcell.group_name,
+            participants=state.memcell.participants,
+            type=state.memcell.type,
+            episode=state.group_episode.episode,
+        )
+        asyncio.create_task(_trigger_clustering(state.request.group_id, memcell_for_clustering, state.scene))
+        logger.info(f"[MemCell处理] 异步触发聚类 (scene={state.scene})")
+    except Exception as e:
+        logger.error(f"[MemCell处理] ❌ 触发聚类失败: {e}")
+
+
+async def _process_memories(state: ExtractionState, memory_manager: MemoryManager):
+    """保存 Episodes 并提取/保存 Semantic 和 EventLog"""
+    await load_core_memories(state.request, state.participants, state.current_time)
+    
+    episodic_source = state.group_episode_memories + state.episode_memories
+    episodes_to_save = list(episodic_source)
+    
+    # assistant 场景：复制群组 Episode 给每个用户
+    if state.is_assistant_scene and state.group_episode_memories:
+        episodes_to_save.extend(_clone_episodes_for_users(state))
+    
+    if episodes_to_save:
+        await _save_episodes(state, episodes_to_save, episodic_source)
+    
+    if episodic_source:
+        semantic_memories, event_logs = await _extract_semantic_and_eventlog(state, memory_manager, episodic_source)
+        await _save_semantic_and_eventlog(state, semantic_memories, event_logs)
+    
+    await update_status_after_memcell(state.request, state.memcell, state.current_time, state.request.raw_data_type)
+
+
+def _clone_episodes_for_users(state: ExtractionState) -> List[Memory]:
+    """为每个用户复制群组 Episode"""
+    from dataclasses import replace
+    cloned = []
+    group_ep = state.group_episode_memories[0]
+    for user_id in state.participants:
+        if "robot" in user_id.lower() or "assistant" in user_id.lower():
+            continue
+        cloned.append(replace(group_ep, user_id=user_id, user_name=user_id))
+    logger.info(f"[MemCell处理] 复制群组 Episode 给 {len(cloned)} 个用户")
+    return cloned
+
+
+async def _save_episodes(
+    state: ExtractionState,
+    episodes_to_save: List[Memory],
+    episodic_source: List[Memory]
+):
+    """保存 Episodes 到数据库"""
+    for ep in episodes_to_save:
+        if getattr(ep, "group_name", None) is None:
+            ep.group_name = state.request.group_name
+        if getattr(ep, "user_name", None) is None:
+            ep.user_name = ep.user_id
+    
+    docs = [_convert_episode_memory_to_doc(ep, state.current_time) for ep in episodes_to_save]
+    payloads = [MemoryDocPayload(MemoryType.EPISODIC_MEMORY, doc) for doc in docs]
+    saved_map = await save_memory_docs(payloads)
+    saved_docs = saved_map.get(MemoryType.EPISODIC_MEMORY, [])
+    
+    for ep, saved_doc in zip(episodic_source, saved_docs):
+        ep.event_id = str(saved_doc.event_id)
+        state.parent_docs_map[str(saved_doc.event_id)] = saved_doc
+
+
+async def _extract_semantic_and_eventlog(
+    state: ExtractionState,
+    memory_manager: MemoryManager,
+    episodic_source: List[Memory]
+) -> Tuple[List[SemanticMemoryItem], List[EventLog]]:
+    """提取 Semantic 和 EventLog"""
+    logger.info(f"[MemCell处理] 提取 Semantic/EventLog，共 {len(episodic_source)} 个 Episode")
+    
+    tasks = []
+    metadata = []
+    
+    for ep in episodic_source:
+        if not ep.event_id:
+            continue
+        tasks.append(memory_manager.extract_memory(
+            memcell=state.memcell, memory_type=MemoryType.SEMANTIC_MEMORY,
+            user_id=ep.user_id, episode_memory=ep,
+        ))
+        metadata.append({'type': MemoryType.SEMANTIC_MEMORY, 'ep': ep})
+        tasks.append(memory_manager.extract_memory(
+            memcell=state.memcell, memory_type=MemoryType.PERSONAL_EVENT_LOG,
+            user_id=ep.user_id, episode_memory=ep,
+        ))
+        metadata.append({'type': MemoryType.PERSONAL_EVENT_LOG, 'ep': ep})
+    
+    if not tasks:
+        return [], []
+    
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+    
+    semantic_memories = []
+    event_logs = []
+    
+    for meta, result in zip(metadata, results):
+        if isinstance(result, Exception) or not result:
+            continue
+        
+        ep = meta['ep']
+        if meta['type'] == MemoryType.SEMANTIC_MEMORY:
+            for mem in result:
+                mem.parent_event_id = ep.event_id
+                mem.user_id = ep.user_id
+                mem.group_id = ep.group_id
+                mem.group_name = ep.group_name
+                mem.user_name = ep.user_name
+                semantic_memories.append(mem)
+        elif meta['type'] == MemoryType.PERSONAL_EVENT_LOG:
+            result.parent_event_id = ep.event_id
+            result.user_id = ep.user_id
+            result.group_id = ep.group_id
+            result.group_name = ep.group_name
+            result.user_name = ep.user_name
+            event_logs.append(result)
+    
+    return semantic_memories, event_logs
+
+
+async def _save_semantic_and_eventlog(
+    state: ExtractionState,
+    semantic_memories: List[SemanticMemoryItem],
+    event_logs: List[EventLog]
+):
+    """保存 Semantic 和 EventLog"""
+    semantic_docs = []
+    for mem in semantic_memories:
+        parent_doc = state.parent_docs_map.get(str(mem.parent_event_id))
+        if parent_doc:
+            semantic_docs.append(_convert_semantic_memory_to_doc(mem, parent_doc, state.current_time))
+    
+    event_log_docs = []
+    for el in event_logs:
+        parent_doc = state.parent_docs_map.get(str(el.parent_event_id))
+        if parent_doc:
+            event_log_docs.extend(_convert_event_log_to_docs(el, parent_doc, state.current_time))
+    
+    # assistant 场景：复制给每个用户
+    if state.is_assistant_scene:
+        user_ids = [u for u in state.participants if "robot" not in u.lower() and "assistant" not in u.lower()]
+        semantic_docs.extend([
+            doc.model_copy(update={"user_id": uid, "user_name": uid})
+            for doc in semantic_docs for uid in user_ids
+        ])
+        event_log_docs.extend([
+            doc.model_copy(update={"user_id": uid, "user_name": uid})
+            for doc in event_log_docs for uid in user_ids
+        ])
+        logger.info(f"[MemCell处理] 复制 Semantic/EventLog 给 {len(user_ids)} 个用户")
+    
+    payloads = []
+    payloads.extend(MemoryDocPayload(MemoryType.SEMANTIC_MEMORY, doc) for doc in semantic_docs)
+    payloads.extend(MemoryDocPayload(MemoryType.PERSONAL_EVENT_LOG, doc) for doc in event_log_docs)
+    if payloads:
+        await save_memory_docs(payloads)
 
 
 def extract_message_time(raw_data):
