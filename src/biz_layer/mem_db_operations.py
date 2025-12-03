@@ -46,7 +46,6 @@ from infra_layer.adapters.out.persistence.document.memory.memcell import (
     DataTypeEnum,
 )
 from memory_layer.memory_extractor.profile_memory_extractor import ProjectInfo
-from biz_layer.conversation_data_repo import ConversationDataRepository
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
