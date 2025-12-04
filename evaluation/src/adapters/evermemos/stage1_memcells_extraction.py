@@ -33,6 +33,12 @@ from memory_layer.memcell_extractor.conv_memcell_extractor import (
 from memory_layer.memory_extractor.episode_memory_extractor import (
     EpisodeMemoryExtractor,
 )
+# 评估专用的检索优化版本 prompts
+from memory_layer.prompts.en.episode_mem_prompts import (
+    EPISODE_GENERATION_PROMPT_R,
+    GROUP_EPISODE_GENERATION_PROMPT_R,
+    DEFAULT_CUSTOM_INSTRUCTIONS_R,
+)
 from memory_layer.memory_extractor.base_memory_extractor import (
     MemoryExtractRequest,
 )
@@ -219,7 +225,10 @@ async def memcell_extraction_from_conversation(
 ) -> list:
 
     episode_extractor = EpisodeMemoryExtractor(
-        llm_provider=llm_provider, use_eval_prompts=True
+        llm_provider=llm_provider,
+        episode_prompt=EPISODE_GENERATION_PROMPT_R,
+        group_episode_prompt=GROUP_EPISODE_GENERATION_PROMPT_R,
+        custom_instructions=DEFAULT_CUSTOM_INSTRUCTIONS_R,
     )
     # 如果启用前瞻提取，创建 ForesightExtractor
     foresight_extractor = None
@@ -363,7 +372,7 @@ async def process_single_conversation(
     # Create MemCellExtractor
     raw_data_list = convert_conversation_to_raw_data_list(conversation)
     memcell_extractor = ConvMemCellExtractor(
-        llm_provider=llm_provider, use_eval_prompts=True
+        llm_provider=llm_provider,
     )
 
     # Conditional creation: Cluster manager (per-conversation)
@@ -692,11 +701,10 @@ async def main():
         max_tokens=config.llm_config[llm_service]["max_tokens"],
     )
 
-    # 创建共享的 Event Log Extractor（使用评估专用提示词）
+    # 创建共享的 Event Log Extractor
     console.print("⚙️ 初始化 Event Log Extractor...", style="yellow")
     shared_event_log_extractor = EventLogExtractor(
         llm_provider=shared_llm_provider,
-        use_eval_prompts=True,  # 评估系统使用 eval/ 提示词
     )
 
     # 🔥 Use pending conversation dict (checkpoint resume)

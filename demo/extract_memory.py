@@ -1,9 +1,10 @@
 import asyncio
-import json, os
+import json
 from pathlib import Path
 import httpx
 
 from demo.tools.clear_all_data import clear_all_memories
+from common_utils.language_utils import get_prompt_language
 
 
 def load_conversation_data(file_path: str) -> tuple:
@@ -84,7 +85,9 @@ async def test_v3_memorize_api():
     print("=" * 100)
     
     # Load conversation data based on language setting
-    language = os.getenv("MEMORY_LANGUAGE", "en")
+    language = get_prompt_language()
+    print(f"\n📌 Language setting: MEMORY_LANGUAGE={language}")
+    print(f"   (Set via environment variable, affects both data file and server prompts)")
 
     if language == "zh":
         data_file = "data/assistant_chat_zh.json"

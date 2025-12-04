@@ -11,16 +11,16 @@ from typing import AbstractSet, Any, Dict, List, Optional, Set
 
 from core.observation.logger import get_logger
 
-from ...llm.llm_provider import LLMProvider
+from memory_layer.llm.llm_provider import LLMProvider
 
 # 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from ...prompts import (
+from memory_layer.prompts import (
     CONVERSATION_PROFILE_PART1_EXTRACTION_PROMPT,
     CONVERSATION_PROFILE_PART2_EXTRACTION_PROMPT,
     CONVERSATION_PROFILE_PART3_EXTRACTION_PROMPT,
 )
 from api_specs.memory_types import MemoryType, MemCell
-from .conversation import (
+from memory_layer.memory_extractor.profile_memory.conversation import (
     annotate_relative_dates,
     build_conversation_text,
     build_episode_text,
@@ -30,8 +30,8 @@ from .conversation import (
     is_important_to_user,
     merge_group_importance_evidence,
 )
-from .empty_evidence_completion import complete_missing_evidences
-from .data_normalize import (
+from memory_layer.memory_extractor.profile_memory.empty_evidence_completion import complete_missing_evidences
+from memory_layer.memory_extractor.profile_memory.data_normalize import (
     accumulate_old_memory_entry,
     convert_projects_to_dataclass,
     merge_profiles,
@@ -39,12 +39,12 @@ from .data_normalize import (
     profile_payload_to_memory,
     remove_evidences_from_profile,
 )
-from .evidence_utils import (
+from memory_layer.memory_extractor.profile_memory.evidence_utils import (
     filter_opinion_tendency_by_type,
     remove_entries_without_evidence,
 )
-from .project_helpers import filter_project_items_by_type
-from .merger import convert_important_info_to_evidence
+from memory_layer.memory_extractor.profile_memory.project_helpers import filter_project_items_by_type
+from memory_layer.memory_extractor.profile_memory.merger import convert_important_info_to_evidence
 from memory_layer.memory_extractor.profile_memory.types import (
     GroupImportanceEvidence,
     ImportanceEvidence,

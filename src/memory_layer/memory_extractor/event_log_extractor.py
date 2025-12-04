@@ -12,12 +12,9 @@ import json
 import re
 
 # 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from ..prompts import EVENT_LOG_PROMPT
+from memory_layer.prompts import EVENT_LOG_PROMPT
 
-# 评估专用提示词
-from ..prompts.eval.event_log_prompts import EVENT_LOG_PROMPT as EVAL_EVENT_LOG_PROMPT
-
-from ..llm.llm_provider import LLMProvider
+from memory_layer.llm.llm_provider import LLMProvider
 from common_utils.datetime_utils import get_now_with_timezone
 
 from core.observation.logger import get_logger
@@ -60,22 +57,17 @@ class EventLogExtractor:
     - Atomic facts are independent, searchable units
     """
 
-    def __init__(self, llm_provider: LLMProvider, use_eval_prompts: bool = False):
+    def __init__(self, llm_provider: LLMProvider):
         """
         Initialize the event log extractor.
 
         Args:
             llm_provider: LLM provider for generating event logs
-            use_eval_prompts: Whether to use evaluation-specific prompts
         """
         self.llm_provider = llm_provider
-        self.use_eval_prompts = use_eval_prompts
         
-        # 根据 use_eval_prompts 选择对应的提示词
-        if self.use_eval_prompts:
-            self.event_log_prompt = EVAL_EVENT_LOG_PROMPT
-        else:
-            self.event_log_prompt = EVENT_LOG_PROMPT
+        # 使用根据 MEMORY_LANGUAGE 环境变量自动选择的提示词
+        self.event_log_prompt = EVENT_LOG_PROMPT
 
     def _parse_timestamp(self, timestamp) -> datetime:
         """

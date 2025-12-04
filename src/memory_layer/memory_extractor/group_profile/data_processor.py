@@ -132,7 +132,7 @@ class GroupProfileDataProcessor:
             合并、去重后的 memcell_ids（历史顺序不变，新的按时间排序追加，最多 max_count 个）
         """
         from common_utils.datetime_utils import get_now_with_timezone
-        from ..group_profile_memory_extractor import convert_to_datetime
+        from memory_layer.memory_extractor.group_profile_memory_extractor import convert_to_datetime
 
         historical = historical or []
 

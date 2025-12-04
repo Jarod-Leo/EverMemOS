@@ -8,12 +8,12 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
 # 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from ..prompts import (
+from memory_layer.prompts import (
     get_group_foresight_generation_prompt,
     get_foresight_generation_prompt,
 )
-from ..llm.llm_provider import LLMProvider
-from .base_memory_extractor import MemoryExtractor, MemoryExtractRequest
+from memory_layer.llm.llm_provider import LLMProvider
+from memory_layer.memory_extractor.base_memory_extractor import MemoryExtractor, MemoryExtractRequest
 from api_specs.memory_types import MemoryType, MemCell, Memory, ForesightItem
 from agentic_layer.vectorize_service import get_vectorize_service
 from core.observation.logger import get_logger

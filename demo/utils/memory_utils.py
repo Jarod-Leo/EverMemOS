@@ -29,9 +29,15 @@ from infra_layer.adapters.out.persistence.document.memory.memcell import (
 )
 from demo.config import MongoDBConfig
 
+# 从 common_utils 导入语言工具函数
+from common_utils.language_utils import (
+    get_prompt_language,
+    set_prompt_language as _set_prompt_language,
+)
+
 
 # ============================================================================
-# Prompt 语言设置
+# Prompt 语言设置（使用 common_utils.language_utils）
 # ============================================================================
 
 
@@ -48,21 +54,10 @@ def set_prompt_language(language: str) -> None:
         - 必须在导入 memory_layer 相关模块之前调用
         - 建议在程序启动时立即调用
     """
-    if language not in ["zh", "en"]:
+    if _set_prompt_language(language):
+        print(f"[Prompt Language] 已设置为: {language} (影响所有记忆提取 Prompt)")
+    else:
         print(f"[Warning] 不支持的语言 '{language}'，将使用默认语言 'en'")
-        language = "en"
-
-    os.environ["MEMORY_LANGUAGE"] = language
-    print(f"[Prompt Language] 已设置为: {language} (影响所有记忆提取 Prompt)")
-
-
-def get_prompt_language() -> str:
-    """获取当前的 Prompt 语言设置
-
-    Returns:
-        当前的 MEMORY_LANGUAGE 环境变量值，默认为 "en"
-    """
-    return os.getenv("MEMORY_LANGUAGE", "en")
 
 
 # ============================================================================

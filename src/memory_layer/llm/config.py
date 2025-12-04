@@ -6,7 +6,7 @@ LLM配置管理
 
 import os
 from typing import Optional
-from .openai_provider import OpenAIProvider
+from memory_layer.llm.openai_provider import OpenAIProvider
 
 
 def create_provider(

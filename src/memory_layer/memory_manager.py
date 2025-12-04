@@ -7,27 +7,27 @@ from typing import List, Optional
 
 from core.observation.logger import get_logger
 
-from .llm.llm_provider import LLMProvider
-from .memcell_extractor.conv_memcell_extractor import ConvMemCellExtractor
-from .memcell_extractor.base_memcell_extractor import RawData
-from .memcell_extractor.conv_memcell_extractor import ConversationMemCellExtractRequest
+from memory_layer.llm.llm_provider import LLMProvider
+from memory_layer.memcell_extractor.conv_memcell_extractor import ConvMemCellExtractor
+from memory_layer.memcell_extractor.base_memcell_extractor import RawData
+from memory_layer.memcell_extractor.conv_memcell_extractor import ConversationMemCellExtractRequest
 from api_specs.memory_types import MemCell, RawDataType, MemoryType, ForesightItem
-from .memory_extractor.episode_memory_extractor import (
+from memory_layer.memory_extractor.episode_memory_extractor import (
     EpisodeMemoryExtractor,
     EpisodeMemoryExtractRequest,
     Memory,
 )
-from .memory_extractor.profile_memory_extractor import (
+from memory_layer.memory_extractor.profile_memory_extractor import (
     ProfileMemoryExtractor,
     ProfileMemoryExtractRequest,
 )
-from .memory_extractor.group_profile_memory_extractor import (
+from memory_layer.memory_extractor.group_profile_memory_extractor import (
     GroupProfileMemoryExtractor,
     GroupProfileMemoryExtractRequest,
 )
-from .memory_extractor.event_log_extractor import EventLogExtractor
-from .memory_extractor.foresight_extractor import ForesightExtractor
-from .memcell_extractor.base_memcell_extractor import StatusResult
+from memory_layer.memory_extractor.event_log_extractor import EventLogExtractor
+from memory_layer.memory_extractor.foresight_extractor import ForesightExtractor
+from memory_layer.memcell_extractor.base_memcell_extractor import StatusResult
 
 
 logger = get_logger(__name__)
@@ -180,7 +180,7 @@ class MemoryManager:
             self._episode_extractor = EpisodeMemoryExtractor(self.llm_provider)
         
         # 构建提取请求
-        from .memory_extractor.base_memory_extractor import MemoryExtractRequest
+        from memory_layer.memory_extractor.base_memory_extractor import MemoryExtractRequest
         
         request = MemoryExtractRequest(
             memcell=memcell,

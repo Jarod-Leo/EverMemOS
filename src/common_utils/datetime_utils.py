@@ -34,15 +34,51 @@ def to_timezone(dt: datetime.datetime, tz: ZoneInfo = None) -> datetime.datetime
     return dt.astimezone(tz)
 
 
-def to_iso_format(dt: datetime.datetime) -> str:
+def to_iso_format(time_value: datetime.datetime | int | float | str | None) -> str | None:
     """
-    将datetime对象转换为ISO格式字符串（带时区）
-    return 2025-09-16T20:20:06.517301+08:00
+    将时间值转换为ISO格式字符串（带时区）
+    支持多种输入格式：
+    - datetime对象
+    - int/float: Unix时间戳（自动识别秒级或毫秒级）
+    - str: 已经是ISO格式的字符串则直接返回
+    - None: 返回None
+
+    Args:
+        time_value: 时间值，支持datetime、时间戳、字符串或None
+
+    Returns:
+        ISO格式的日期时间字符串（如 2025-09-16T20:20:06.517301+08:00），或None
     """
+    # 处理None
+    if time_value is None:
+        return None
+
+    # 处理字符串类型 - 如果已经是字符串，直接返回（假设已经是ISO格式）
+    if isinstance(time_value, str):
+        if time_value:
+            return time_value
+        return None
+
+    # 处理时间戳类型
+    if isinstance(time_value, (int, float)):
+        if time_value <= 0:
+            return None
+        try:
+            # 使用from_timestamp自动识别秒级/毫秒级时间戳
+            dt = from_timestamp(time_value)
+        except (ValueError, OSError):
+            return None
+    elif isinstance(time_value, datetime.datetime):
+        dt = time_value
+    else:
+        # 不支持的类型
+        return None
+
+    # 处理时区
     if dt.tzinfo is None:
-        # 如果没有，因为默认用的是TZ环境变量，所以需要手动设置时区
+        # 如果没有时区信息，使用TZ环境变量设置时区
         dt = dt.replace(tzinfo=timezone)
-    # 如果是utc之类的，转成本地时区
+    # 统一转换为本地时区
     return dt.astimezone(timezone).isoformat()
 
 

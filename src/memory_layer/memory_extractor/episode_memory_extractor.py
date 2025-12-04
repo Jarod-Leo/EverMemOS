@@ -12,23 +12,16 @@ import re, json, asyncio, uuid
 
 
 # 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from ..prompts import (
+from memory_layer.prompts import (
     EPISODE_GENERATION_PROMPT,
     GROUP_EPISODE_GENERATION_PROMPT,
     DEFAULT_CUSTOM_INSTRUCTIONS,
 )
 
-# 评估专用提示词
-from ..prompts.eval.episode_mem_prompts import (
-    EPISODE_GENERATION_PROMPT as EVAL_EPISODE_GENERATION_PROMPT,
-    GROUP_EPISODE_GENERATION_PROMPT as EVAL_GROUP_EPISODE_GENERATION_PROMPT,
-    DEFAULT_CUSTOM_INSTRUCTIONS as EVAL_DEFAULT_CUSTOM_INSTRUCTIONS,
-)
 
+from memory_layer.llm.llm_provider import LLMProvider
 
-from ..llm.llm_provider import LLMProvider
-
-from .base_memory_extractor import MemoryExtractor, MemoryExtractRequest
+from memory_layer.memory_extractor.base_memory_extractor import MemoryExtractor, MemoryExtractRequest
 from api_specs.memory_types import MemoryType, Memory, RawDataType, MemCell
 
 from common_utils.datetime_utils import get_now_with_timezone
@@ -58,20 +51,28 @@ class EpisodeMemoryExtractor(MemoryExtractor):
     - EventLog 提取（由 EventLogExtractor 负责）
     """
     def __init__(
-        self, llm_provider: LLMProvider | None = None, use_eval_prompts: bool = False
+        self,
+        llm_provider: LLMProvider | None = None,
+        episode_prompt: Optional[str] = None,
+        group_episode_prompt: Optional[str] = None,
+        custom_instructions: Optional[str] = None,
     ):
+        """
+        初始化 Episode 提取器
+        
+        Args:
+            llm_provider: LLM 提供者
+            episode_prompt: 可选的自定义个人 Episode 提示词（不提供则使用默认）
+            group_episode_prompt: 可选的自定义群组 Episode 提示词（不提供则使用默认）
+            custom_instructions: 可选的自定义指令（不提供则使用默认）
+        """
         super().__init__(MemoryType.EPISODIC_MEMORY)
         self.llm_provider = llm_provider
-        self.use_eval_prompts = use_eval_prompts
         
-        if self.use_eval_prompts:
-            self.episode_generation_prompt = EVAL_EPISODE_GENERATION_PROMPT
-            self.group_episode_generation_prompt = EVAL_GROUP_EPISODE_GENERATION_PROMPT
-            self.default_custom_instructions = EVAL_DEFAULT_CUSTOM_INSTRUCTIONS
-        else:
-            self.episode_generation_prompt = EPISODE_GENERATION_PROMPT
-            self.group_episode_generation_prompt = GROUP_EPISODE_GENERATION_PROMPT
-            self.default_custom_instructions = DEFAULT_CUSTOM_INSTRUCTIONS
+        # 使用自定义 prompt 或默认 prompt
+        self.episode_generation_prompt = episode_prompt or EPISODE_GENERATION_PROMPT
+        self.group_episode_generation_prompt = group_episode_prompt or GROUP_EPISODE_GENERATION_PROMPT
+        self.default_custom_instructions = custom_instructions or DEFAULT_CUSTOM_INSTRUCTIONS
 
     def _parse_timestamp(self, timestamp) -> datetime:
         """

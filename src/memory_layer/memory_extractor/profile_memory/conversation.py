@@ -11,7 +11,7 @@ from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 from core.observation.logger import get_logger
 
 # 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from ...prompts import CONVERSATION_PROFILE_EVIDENCE_COMPLETION_PROMPT
+from memory_layer.prompts import CONVERSATION_PROFILE_EVIDENCE_COMPLETION_PROMPT
 from api_specs.memory_types import MemCell
 from memory_layer.memory_extractor.profile_memory.types import (
     GroupImportanceEvidence,

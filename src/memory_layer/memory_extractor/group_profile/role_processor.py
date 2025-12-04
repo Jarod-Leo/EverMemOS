@@ -41,7 +41,7 @@ class RoleProcessor:
         Returns:
             处理后的 roles，格式为 role -> [{"user_id": "xxx", "user_name": "xxx", "confidence": "strong|weak", "evidences": [...]}]
         """
-        from ..group_profile_memory_extractor import GroupRole
+        from memory_layer.memory_extractor.group_profile_memory_extractor import GroupRole
 
         # 定义有效的角色列表（基于 GroupRole 枚举）
         VALID_ROLES = {role.value for role in GroupRole}

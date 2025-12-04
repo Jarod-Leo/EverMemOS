@@ -74,7 +74,7 @@ class TopicProcessor:
         Returns:
             Latest timestamp from (filtered) memcells, or current time if no valid timestamp found.
         """
-        from ..group_profile_memory_extractor import convert_to_datetime
+        from memory_layer.memory_extractor.group_profile_memory_extractor import convert_to_datetime
 
         # If memcell_ids provided and not empty, create a set for fast lookup
         filter_ids = set(memcell_ids) if memcell_ids else None
@@ -126,7 +126,7 @@ class TopicProcessor:
         Returns:
             处理后的 TopicInfo 对象列表（按 last_active_at 排序）
         """
-        from ..group_profile_memory_extractor import TopicInfo
+        from memory_layer.memory_extractor.group_profile_memory_extractor import TopicInfo
 
         # 计算 memcell 列表中的最晚时间作为参考时间点
         # 用于 topic 替换策略的时间判断（离线批处理场景）
