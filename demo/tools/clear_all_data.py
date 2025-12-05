@@ -1,6 +1,6 @@
-"""清空所有记忆数据的工具函数
+"""Tool function to clear all memory data
 
-可以被其他测试脚本导入使用，也可以独立运行
+Can be imported by other test scripts or run independently
 """
 
 
@@ -8,6 +8,7 @@ import asyncio
 import time
 from typing import Dict, Any, List
 
+from pymilvus import utility, Collection
 from pymilvus import utility, Collection
 
 from infra_layer.adapters.out.search.milvus.memory.episodic_memory_collection import (
@@ -31,8 +32,9 @@ from component.redis_provider import RedisProvider
 from component.mongodb_client_factory import MongoDBClientFactory
 
 
+
 async def _clear_mongodb(verbose: bool = True) -> Dict[str, Any]:
-    """删除 MongoDB 中所有文档，保留集合和索引"""
+    """Delete all documents in MongoDB, keeping collections and indexes"""
     result: Dict[str, Any] = {
         "database": None,
         "collections": {},
@@ -62,18 +64,18 @@ async def _clear_mongodb(verbose: bool = True) -> Dict[str, Any]:
         if verbose:
             total_deleted = sum(result["deleted"].values())
             print(
-                f"      ✅ MongoDB '{db_name}': 删除 {total_deleted} 条文档（{len(result['deleted'])} 个集合）"
+                f"      ✅ MongoDB '{db_name}': Deleted {total_deleted} documents ({len(result['deleted'])} collections)"
             )
     except Exception as exc:
         result["errors"].append(str(exc))
         if verbose:
-            print(f"      ⚠️  MongoDB 清理失败: {exc}")
+            print(f"      ⚠️  MongoDB clear failed: {exc}")
 
     return result
 
 
 def _get_milvus_row_count(name: str, coll: Collection) -> int:
-    """获取 Milvus 实时行数（优先 row_count，其次 segment，再兜底 num_entities）"""
+    """Get Milvus real-time row count (priority: row_count > segment > num_entities)"""
     get_stats = getattr(utility, "get_collection_stats", None)
     if callable(get_stats):
         stats_info = get_stats(name)
@@ -105,11 +107,11 @@ def _get_milvus_row_count(name: str, coll: Collection) -> int:
 def _clear_milvus(
     verbose: bool = True, drop_collections: bool = False
 ) -> Dict[str, Any]:
-    """删除 Milvus 集合中的所有向量
+    """Delete all vectors in Milvus collections
 
     Args:
-        verbose: 是否输出日志
-        drop_collections: 是否直接删除物理集合并重建（彻底清空）
+        verbose: Whether to output logs
+        drop_collections: Whether to drop physical collections and recreate (thorough clear)
     """
     stats: Dict[str, Any] = {"cleared": [], "errors": []}
     collection_classes = [
@@ -141,7 +143,7 @@ def _clear_milvus(
                     coll.delete(expr="id != ''")
                     coll.flush()
 
-            # 删除 alias，防止 drop collection 时报错
+            # Drop alias to prevent errors when dropping collection
             try:
                 utility.drop_alias(alias, using=collection.using)
             except Exception:
@@ -162,22 +164,22 @@ def _clear_milvus(
                 )
                 if verbose:
                     print(
-                        f"      ✅ Milvus 删除集合 {real_name}（{before_count} 条向量）"
+                        f"      ✅ Milvus dropped collection {real_name} ({before_count} vectors)"
                     )
 
-            # 清空类级别的 collection 缓存，确保重新创建时不会使用旧的实例
+            # Clear class-level collection cache to ensure new instance is not old one
             cls._collection_instance = None
 
-            # 重新创建空集合并关联 alias，避免后续依赖失败
+            # Recreate empty collection and associate alias
             try:
                 collection.ensure_all()
             except Exception as ensure_exc:
                 if verbose:
-                    print(f"      ⚠️  重新创建 Milvus 集合 {alias} 失败: {ensure_exc}")
+                    print(f"      ⚠️  Recreate Milvus collection {alias} failed: {ensure_exc}")
         except Exception as exc:  # pylint: disable=broad-except
             stats["errors"].append(str(exc))
             if verbose:
-                print(f"      ⚠️  无法清空 Milvus 集合 {alias}: {exc}")
+                print(f"      ⚠️  Cannot clear Milvus collection {alias}: {exc}")
 
     return stats
 
@@ -185,10 +187,10 @@ def _clear_milvus(
 async def _clear_elasticsearch(
     verbose: bool = True, rebuild_index: bool = False
 ) -> Dict[str, Any]:
-    """删除与记忆相关的 Elasticsearch 文档，必要时重建索引"""
+    """Delete Elasticsearch documents related to memory, rebuild index if necessary"""
     stats: Dict[str, Any] = {"cleared": [], "errors": [], "recreated": False}
     try:
-        # 获取连接即可，因为已经注册了连接
+        # Get connection only
         es_client = EpisodicMemoryDoc.get_connection()
 
         alias_names = [
@@ -212,16 +214,16 @@ async def _clear_elasticsearch(
                                 {"alias": alias, "deleted_index": index_name}
                             )
                             if verbose:
-                                print(f"      ✅ 删除索引: {index_name}")
+                                print(f"      ✅ Deleted index: {index_name}")
                 except Exception as inner_exc:
                     stats["errors"].append(str(inner_exc))
                     if verbose:
-                        print(f"      ⚠️ 删除索引失败 {alias}: {inner_exc}")
+                        print(f"      ⚠️ Delete index failed {alias}: {inner_exc}")
             for alias in alias_names:
                 await es_client.indices.delete_alias(
                     index="*", name=alias, ignore=[404]
                 )
-            # 使用 EsIndexInitializer 重新创建索引
+            # Recreate indices using EsIndexInitializer
             from core.oxm.es.es_utils import EsIndexInitializer
             initializer = EsIndexInitializer()
             await initializer.initialize_indices(
@@ -229,7 +231,7 @@ async def _clear_elasticsearch(
             )
             stats["recreated"] = True
             if verbose:
-                print("      ✅ Elasticsearch 索引与别名已重新创建")
+                print("      ✅ Elasticsearch indices and aliases recreated")
             return stats
 
         for alias in alias_names:
@@ -249,22 +251,22 @@ async def _clear_elasticsearch(
                 )
                 stats["cleared"].append({"alias": alias, "deleted": total_docs})
                 if verbose:
-                    print(f"      ✅ Elasticsearch {alias}: 删除 {total_docs} 条文档")
+                    print(f"      ✅ Elasticsearch {alias}: Deleted {total_docs} documents")
             except Exception as inner_exc:  # pylint: disable=broad-except
                 stats["errors"].append(str(inner_exc))
                 if verbose:
-                    print(f"      ⚠️  无法清空 ES {alias}: {inner_exc}")
+                    print(f"      ⚠️  Cannot clear ES {alias}: {inner_exc}")
 
     except Exception as exc:  # pylint: disable=broad-except
         stats["errors"].append(str(exc))
         if verbose:
-            print(f"      ⚠️  Elasticsearch 清理失败: {exc}")
+            print(f"      ⚠️  Elasticsearch clear failed: {exc}")
 
     return stats
 
 
 async def _clear_redis(verbose: bool = True) -> Dict[str, Any]:
-    """清空 Redis 当前数据库"""
+    """Clear Redis current database"""
     stats: Dict[str, Any] = {}
     try:
         redis_provider = get_bean_by_type(RedisProvider)
@@ -272,63 +274,63 @@ async def _clear_redis(verbose: bool = True) -> Dict[str, Any]:
         await client.flushdb()
         stats["flushed_db"] = redis_provider.redis_db
         if verbose:
-            print(f"      ✅ Redis DB {redis_provider.redis_db} 已清空")
+            print(f"      ✅ Redis DB {redis_provider.redis_db} flushed")
     except Exception as exc:  # pylint: disable=broad-except
         stats["error"] = str(exc)
         if verbose:
-            print(f"      ⚠️  Redis 清理失败: {exc}")
+            print(f"      ⚠️  Redis clear failed: {exc}")
     return stats
 
 
 async def clear_all_memories(
     verbose: bool = True, rebuild_es: bool = False, drop_milvus: bool = False
 ):
-    """清空所有记忆数据（MongoDB、Milvus、Elasticsearch、Redis）
+    """Clear all memory data (MongoDB, Milvus, Elasticsearch, Redis)
 
     Args:
-        verbose: 是否显示详细信息
-        rebuild_es: 是否删除并重建 Elasticsearch 索引 (默认: False)
-        drop_milvus: 是否删除并重建 Milvus 物理集合 (默认: False)
+        verbose: Whether to show detailed info
+        rebuild_es: Whether to delete and rebuild Elasticsearch index (Default: False)
+        drop_milvus: Whether to delete and rebuild Milvus physical collections (Default: False)
     """
     if verbose:
-        print("\n🗑️  清空所有记忆数据...")
+        print("\n🗑️  Clearing all memory data...")
 
     try:
         if verbose:
-            print("   📦 清空 MongoDB...")
+            print("   📦 Clearing MongoDB...")
         mongo_stats = await _clear_mongodb(verbose)
 
         if verbose:
-            print("   🔍 清空 Milvus...")
+            print("   🔍 Clearing Milvus...")
         milvus_stats = _clear_milvus(verbose, drop_collections=drop_milvus)
 
         if verbose:
-            print("   🔎 清空 Elasticsearch...")
+            print("   🔎 Clearing Elasticsearch...")
         es_stats = await _clear_elasticsearch(verbose, rebuild_index=rebuild_es)
 
         if verbose:
-            print("   💾 清空 Redis...")
+            print("   💾 Clearing Redis...")
         redis_stats = await _clear_redis(verbose)
 
         if verbose:
-            print("✅ 所有记忆数据已清空！\n")
-            print("📊 简要统计：")
+            print("✅ All memory data cleared!\n")
+            print("📊 Brief Statistics:")
             total_mongo_deleted = sum(mongo_stats.get("deleted", {}).values())
             print(
-                f"   - MongoDB 删除文档: {total_mongo_deleted} 条（数据库: {mongo_stats.get('database')}）"
+                f"   - MongoDB deleted docs: {total_mongo_deleted} (Database: {mongo_stats.get('database')})"
             )
             total_milvus_deleted = sum(
                 item["deleted"] for item in milvus_stats.get("cleared", [])
             )
-            print(f"   - Milvus 删除向量: {total_milvus_deleted} 条")
+            print(f"   - Milvus deleted vectors: {total_milvus_deleted}")
             if es_stats.get("recreated"):
-                print("   - Elasticsearch: 索引与别名已重新创建")
+                print("   - Elasticsearch: Indices and aliases recreated")
             else:
                 total_es_deleted = sum(
                     item["deleted"] for item in es_stats.get("cleared", [])
                 )
-                print(f"   - Elasticsearch 删除文档: {total_es_deleted} 条")
-            print(f"   - Redis 清空 DB: {redis_stats.get('flushed_db')}")
+                print(f"   - Elasticsearch deleted docs: {total_es_deleted}")
+            print(f"   - Redis flushed DB: {redis_stats.get('flushed_db')}")
 
         return {
             "mongodb": mongo_stats,
@@ -338,7 +340,7 @@ async def clear_all_memories(
         }
 
     except Exception as e:
-        print(f"❌ 清空数据时出错: {e}")
+        print(f"❌ Error clearing data: {e}")
         import traceback
 
         traceback.print_exc()
@@ -346,36 +348,36 @@ async def clear_all_memories(
 
 
 async def main():
-    """独立运行时的入口函数"""
+    """Entry function when running independently"""
     print("=" * 100)
-    print("🗑️  清空所有记忆数据工具")
+    print("🗑️  Clear All Memory Data Tool")
     print("=" * 100)
 
-    # 确保 bootstrap 初始化，以便 get_bean_by_type 能正常工作
+    # Ensure bootstrap initialization for get_bean_by_type to work
     import sys
     import os
     from bootstrap import setup_project_context
 
-    # 添加项目根目录到 path
+    # Add project root to path
     sys.path.append(os.getcwd())
 
     await setup_project_context()
 
     result = await clear_all_memories(verbose=True, rebuild_es=False)
 
-    print("\n📊 清空统计:")
+    print("\n📊 Clear Statistics:")
     mongo_total = sum(result["mongodb"].get("deleted", {}).values())
-    print(f"   MongoDB 删除文档: {mongo_total} 条")
+    print(f"   MongoDB deleted docs: {mongo_total}")
     milvus_total = sum(item["deleted"] for item in result["milvus"].get("cleared", []))
-    print(f"   Milvus 删除向量: {milvus_total} 条")
+    print(f"   Milvus deleted vectors: {milvus_total}")
     if result["elasticsearch"].get("recreated"):
-        print("   Elasticsearch: 索引与别名已重新创建")
+        print("   Elasticsearch: Indices and aliases recreated")
     else:
         es_total = sum(
             item["deleted"] for item in result["elasticsearch"].get("cleared", [])
         )
-        print(f"   Elasticsearch 删除文档: {es_total} 条")
-    print(f"   Redis 清空 DB: {result['redis'].get('flushed_db')}")
+        print(f"   Elasticsearch deleted docs: {es_total}")
+    print(f"   Redis flushed DB: {result['redis'].get('flushed_db')}")
     print("=" * 100)
 
 

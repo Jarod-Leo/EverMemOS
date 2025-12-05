@@ -1,6 +1,6 @@
-"""交互式选择器
+"""Interactive Selectors
 
-提供语言、场景、群组的选择功能。
+Provides selection for language, scenario, and groups.
 """
 
 from typing import List, Dict, Any, Optional
@@ -12,14 +12,14 @@ from common_utils.cli_ui import CLIUI
 
 
 class LanguageSelector:
-    """语言选择器"""
+    """Language Selector"""
     
     @staticmethod
     def select_language() -> str:
-        """交互式选择语言
+        """Interactive language selection
         
         Returns:
-            语言代码："zh" 或 "en"
+            Language code: "zh" or "en"
         """
         print()
         print("=" * 60)
@@ -29,7 +29,7 @@ class LanguageSelector:
         print("  [1] 中文 (Chinese)")
         print("  [2] English")
         print()
-        # 语言一致性提示
+        # Language consistency hint
         print("  💡 提示：为获得最佳体验，建议记忆数据与选择的语言保持一致")
         print("     Note: For best experience, memory data should match the selected language")
         print()
@@ -42,7 +42,7 @@ class LanguageSelector:
                 
                 index = int(choice)
                 if index == 1:
-                    print("\n✓ 已选择：中文 | AI 将使用中文回答\n")
+                    print("\n✓ Selected: Chinese | AI will respond in Chinese\n")
                     return "zh"
                 elif index == 2:
                     print("\n✓ Selected: English | AI will respond in English\n")
@@ -58,17 +58,17 @@ class LanguageSelector:
 
 
 class ScenarioSelector:
-    """场景模式选择器"""
+    """Scenario Mode Selector"""
     
     @staticmethod
     def select_scenario(texts: I18nTexts) -> Optional[ScenarioType]:
-        """交互式选择场景模式
+        """Interactive scenario selection
         
         Args:
-            texts: 国际化文本对象
+            texts: I18nTexts object
             
         Returns:
-            ScenarioType 或 None（取消）
+            ScenarioType or None (Cancelled)
         """
         ui = CLIUI()
         print()
@@ -78,6 +78,7 @@ class ScenarioSelector:
         print(f"  [1] {texts.get('scenario_assistant')}")
         print(f"      {texts.get('scenario_assistant_desc')}")
         print()
+        
         print(f"  [2] {texts.get('scenario_group_chat')}")
         print(f"      {texts.get('scenario_group_chat_desc')}")
         print()
@@ -106,14 +107,14 @@ class ScenarioSelector:
 
 
 class GroupSelector:
-    """群组选择器"""
+    """Group Selector"""
     
     @staticmethod
     async def list_available_groups() -> List[Dict[str, Any]]:
-        """列出所有可用的群组
+        """List all available groups
         
         Returns:
-            群组列表
+            List of groups
         """
         groups = await query_all_groups_from_mongodb()
         
@@ -126,14 +127,14 @@ class GroupSelector:
     
     @staticmethod
     async def select_group(groups: List[Dict[str, Any]], texts: I18nTexts) -> Optional[str]:
-        """交互式选择群组
+        """Interactive group selection
         
         Args:
-            groups: 群组列表
-            texts: 国际化文本对象
+            groups: List of groups
+            texts: I18nTexts object
             
         Returns:
-            选中的 group_id 或 None（取消）
+            Selected group_id or None (Cancelled)
         """
         from .ui import ChatUI
         
@@ -165,4 +166,3 @@ class GroupSelector:
                 print("\n")
                 ChatUI.print_info(texts.get("groups_selection_cancelled"), texts)
                 return None
-

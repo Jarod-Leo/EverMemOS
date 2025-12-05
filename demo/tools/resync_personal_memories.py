@@ -1,8 +1,8 @@
 """
-批量重同步前瞻记录到 Milvus/ES。
+Batch resync foresight records to Milvus/ES.
 
-运行方式：
-    uv run src/bootstrap.py demo/tools/resync_personal_memories.py
+Usage:
+    uv run python src/bootstrap.py demo/tools/resync_personal_memories.py
 """
 
 import asyncio
@@ -23,18 +23,17 @@ async def main():
 
     docs: List[ForesightRecord] = await ForesightRecord.find_all().to_list()
     if not docs:
-        logger.info("MongoDB 中没有 foresight_records 记录，跳过")
+        logger.info("No foresight_records found in MongoDB, skipping")
         return
 
-    logger.info("开始重同步 %s 条前瞻记录", len(docs))
+    logger.info("Starting resync of %s foresight records", len(docs))
     stats = await service.sync_batch_foresights(
         docs,
         sync_to_es=True,
         sync_to_milvus=True,
     )
-    logger.info("完成重同步: %s", stats)
+    logger.info("Resync completed: %s", stats)
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-

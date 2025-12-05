@@ -1,24 +1,24 @@
 """
-⚠️ 危险操作：彻底重置所有数据库结构 ⚠️
+⚠️ DANGER: Completely reset all database structures ⚠️
 
-这个脚本会执行毁灭性操作：
-1. MongoDB: 直接删除整个 memsys 数据库
-2. Milvus: Drop 所有集合
-3. Elasticsearch: 删除所有名称包含 'memsys' 的索引（包括旧的、新的、别名）
-4. Redis: 清空数据库
+This script performs destructive operations:
+1. MongoDB: Drops the entire memsys database
+2. Milvus: Drops all collections
+3. Elasticsearch: Deletes all indices containing 'memsys' (old, new, aliases)
+4. Redis: Flushes the database
 
-使用场景：
-- 环境数据脏乱，需要彻底重来
-- 修复了 Schema，需要重建索引结构
+Use cases:
+- Environment data is messy and needs a clean slate
+- Schema fixed, need to rebuild index structures
 
-使用后必须重启服务以重新初始化结构。
+Must restart services after use to re-initialize structures.
 """
 
 import asyncio
 import sys
 import os
 
-# 确保能导入项目模块
+# Ensure project modules can be imported
 sys.path.append(os.getcwd())
 
 from pymilvus import utility, connections
@@ -30,30 +30,30 @@ from bootstrap import setup_project_context
 
 
 async def reset_mongodb():
-    print("🔥 [MongoDB] 正在删除数据库...")
+    print("🔥 [MongoDB] Deleting database...")
     try:
         factory = get_bean_by_type(MongoDBClientFactory)
         client_wrapper = await factory.get_default_client()
         async_client = client_wrapper.client
         db_name = client_wrapper.database.name
-        # 直接删除整个数据库
+        # Directly drop the entire database
         await async_client.drop_database(db_name)
-        print(f"   ✅ 已删除数据库: {db_name}")
+        print(f"   ✅ Database deleted: {db_name}")
     except Exception as e:
-        print(f"   ❌ MongoDB 重置失败: {e}")
+        print(f"   ❌ MongoDB reset failed: {e}")
 
 
 def reset_milvus():
-    print("🔥 [Milvus] 正在 Drop 所有集合...")
+    print("🔥 [Milvus] Dropping all collections...")
     try:
-        # 连接配置
+        # Connection config
         milvus_host = os.getenv('MILVUS_HOST', 'localhost')
         milvus_port = int(os.getenv('MILVUS_PORT', '19530'))
         connections.connect(host=milvus_host, port=milvus_port)
 
         collections = utility.list_collections()
         if not collections:
-            print("   ⚪ 没有发现集合")
+            print("   ⚪ No collections found")
             return
 
         for name in collections:
@@ -61,53 +61,53 @@ def reset_milvus():
             print(f"   ✅ Dropped collection: {name}")
 
     except Exception as e:
-        print(f"   ❌ Milvus 重置失败: {e}")
+        print(f"   ❌ Milvus reset failed: {e}")
 
 
 async def reset_elasticsearch():
-    print("🔥 [Elasticsearch] 正在删除所有相关索引...")
+    print("🔥 [Elasticsearch] Deleting all related indices...")
     try:
         factory = get_bean_by_type(ElasticsearchClientFactory)
         client_wrapper = await factory.register_default_client()
         es = client_wrapper.async_client
 
-        # 删除所有包含 memsys 的索引
+        # Delete all indices containing memsys
         target_pattern = "*memsys*"
 
-        # 1. 获取具体索引列表
+        # 1. Get specific index list
         indices_resp = await es.cat.indices(index=target_pattern, format="json")
 
         if not indices_resp:
-            print(f"   ⚪ 没有发现匹配 '{target_pattern}' 的索引")
+            print(f"   ⚪ No indices found matching '{target_pattern}'")
             return
 
-        # 2. 提取索引名列表
+        # 2. Extract index names
         index_names = [item['index'] for item in indices_resp]
         count = len(index_names)
 
-        # 3. 显式删除这些索引
-        # 使用逗号分隔的字符串或列表
+        # 3. Explicitly delete these indices
+        # Use comma-separated string or list
         await es.indices.delete(index=list(index_names), ignore=[404])
-        print(f"   ✅ 已删除 {count} 个索引: {', '.join(index_names[:3])}...")
+        print(f"   ✅ Deleted {count} indices: {', '.join(index_names[:3])}...")
 
     except Exception as e:
-        print(f"   ❌ Elasticsearch 重置失败: {e}")
+        print(f"   ❌ Elasticsearch reset failed: {e}")
 
 
 async def reset_redis():
-    print("🔥 [Redis] 正在 FlushDB...")
+    print("🔥 [Redis] Flushing DB...")
     try:
         provider = get_bean_by_type(RedisProvider)
         client = await provider.get_client()
         await client.flushdb()
-        print("   ✅ Redis 已清空")
+        print("   ✅ Redis flushed")
     except Exception as e:
-        print(f"   ❌ Redis 重置失败: {e}")
+        print(f"   ❌ Redis reset failed: {e}")
 
 
 async def main():
     print("\n" + "=" * 60)
-    print("🧨 数据库彻底重置工具 🧨")
+    print("🧨 Database Complete Reset Tool 🧨")
     print("=" * 60 + "\n")
 
     await setup_project_context()
@@ -118,12 +118,12 @@ async def main():
     await reset_redis()
 
     print("\n" + "=" * 60)
-    print("✨ 重置完成！请立即重启服务以重建索引结构 ✨")
+    print("✨ Reset complete! Please restart services immediately to rebuild index structures ✨")
     print("=" * 60 + "\n")
 
 
 if __name__ == "__main__":
-    # 加载 .env
+    # Load .env
     from dotenv import load_dotenv
 
     load_dotenv()

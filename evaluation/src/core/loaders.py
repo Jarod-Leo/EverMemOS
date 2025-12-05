@@ -11,6 +11,7 @@ from typing import List, Optional
 
 from evaluation.src.core.data_models import Dataset, Conversation, Message, QAPair
 from evaluation.src.converters.registry import get_converter
+from common_utils.datetime_utils import from_iso_format
 
 
 def load_dataset(dataset_name: str, data_path: str, max_content_length: Optional[int] = None) -> Dataset:
@@ -204,7 +205,18 @@ def _convert_locomo_conversation(conversation_data: dict, conv_id: str, max_cont
         
         # Convert each message
         for msg_idx, msg in enumerate(session_messages):
-            msg_timestamp = current_session_time + timedelta(seconds=msg_idx * time_interval)
+            # Try to parse message-level timestamp first (priority 1)
+            msg_timestamp = None
+            timestamp_source = None
+            
+            if 'time' in msg and msg['time']:
+                # Priority 1: Use message-level timestamp (strict parsing, raises on error)
+                msg_timestamp = from_iso_format(msg['time'], strict=True)
+                timestamp_source = "message_level"
+            else:
+                # Priority 2: Generate from session-level timestamp
+                msg_timestamp = current_session_time + timedelta(seconds=msg_idx * time_interval)
+                timestamp_source = "fake" if is_fake_timestamp else "session_level"
             
             # Handle image information
             content = msg['text']
@@ -228,7 +240,7 @@ def _convert_locomo_conversation(conversation_data: dict, conv_id: str, max_cont
                     "img_url": msg.get("img_url"),
                     "blip_caption": msg.get("blip_caption"),
                     "query": msg.get("query"),
-                    "is_fake_timestamp": is_fake_timestamp,  # Mark if timestamp is fake
+                    "timestamp_source": timestamp_source,  # Mark timestamp source
                 }
             )
             messages.append(message)
@@ -295,4 +307,6 @@ def _parse_locomo_timestamp(timestamp_str: str) -> Optional[datetime]:
         # If parse fails, return None and print warning
         print(f"⚠️  Warning: Failed to parse timestamp '{timestamp_str}', no timestamp will be set")
         return None
+
+
 

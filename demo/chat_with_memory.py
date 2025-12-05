@@ -1,9 +1,9 @@
-"""记忆增强对话脚本
+"""Memory Enhanced Chat Script
 
-使用方法：
+Usage:
     uv run python src/bootstrap.py demo/chat_with_memory.py
     
-备选方式：
+Alternative:
     cd demo
     python chat_with_memory.py
 """
@@ -20,7 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 async def main():
-    """主入口 - 启动聊天应用"""
+    """Main Entry - Start Chat Application"""
     orchestrator = ChatOrchestrator(PROJECT_ROOT)
     await orchestrator.run()
 

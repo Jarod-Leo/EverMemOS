@@ -142,7 +142,7 @@ async def test_v3_memorize_api():
                         request_id = result.get("result", {}).get("request_id", "")
                         print(f"   🔄 Processing (request_id: {request_id[:8]}...)")
                     else:
-                        # Compatible with old versions or other status
+                        # Compatible with old versions or other statuses
                         total_accumulated += 1
                         print(f"   ⏳ Queued")
                 else:

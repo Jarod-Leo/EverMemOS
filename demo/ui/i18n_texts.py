@@ -1,10 +1,10 @@
-"""国际化文本定义 - 支持中英文双语
+"""Internationalization Text Definition - Supports Chinese and English
 
-本模块定义了对话系统所有界面文本的中英文版本。
+This module defines the Chinese and English versions of all interface texts for the dialog system.
 
-使用方法：
+Usage:
     from i18n_texts import I18nTexts
-    texts = I18nTexts("zh")  # 或 "en"
+    texts = I18nTexts("zh")  # or "en"
     print(texts.get("banner_title"))
 """
 
@@ -12,11 +12,11 @@ from typing import Dict, Any
 
 
 class I18nTexts:
-    """国际化文本管理器"""
+    """Internationalization Text Manager"""
 
-    # 所有文本的中英文映射
+    # Chinese-English mapping for all texts
     TEXTS: Dict[str, Dict[str, str]] = {
-        # ==================== 语言选择 ====================
+        # ==================== Language Selection ====================
         "language_selection_title": {
             "zh": "🌏  语言选择 / Language Selection",
             "en": "🌏  Language Selection / 语言选择",
@@ -36,7 +36,7 @@ class I18nTexts:
             "zh": "请输入有效的数字",
             "en": "Please enter a valid number",
         },
-        # ==================== 场景模式选择 ====================
+        # ==================== Scenario Mode Selection ====================
         "scenario_selection_title": {
             "zh": "🎯  场景模式选择",
             "en": "🎯  Scenario Mode Selection",
@@ -56,7 +56,7 @@ class I18nTexts:
             "en": "Multi-person chat with group memory-based conversation analysis",
         },
         "scenario_selected": {"zh": "已选择场景模式", "en": "Scenario mode selected"},
-        # ==================== 检索模式选择 ====================
+        # ==================== Retrieval Mode Selection ====================
         "retrieval_mode_selection_title": {
             "zh": "🔍  检索模式选择",
             "en": "🔍  Retrieval Mode Selection",
@@ -94,7 +94,7 @@ class I18nTexts:
             "zh": "请输入 1-4",
             "en": "Please enter 1-4",
         },
-        # ==================== Agentic 检索 UI ====================
+        # ==================== Agentic Retrieval UI ====================
         "agentic_retrieving": {
             "zh": "正在检索记忆...",
             "en": "Retrieving memories...",
@@ -118,7 +118,7 @@ class I18nTexts:
             "en": "💡 First-round memories insufficient, LLM generated refined queries for more relevant memories",
         },
         "agentic_supplementary_queries": {"zh": "补充查询", "en": "Supplementary queries"},
-        # ==================== 横幅和欢迎 ====================
+        # ==================== Banner and Welcome ====================
         "banner_title": {
             "zh": "🧠  EverMem 记忆对话助手",
             "en": "🧠  EverMem Memory-Enhanced Chat Assistant",
@@ -135,7 +135,7 @@ class I18nTexts:
             "zh": "安装 readline 模块以支持更好的输入体验",
             "en": "Install readline module for better input experience",
         },
-        # ==================== 群组选择 ====================
+        # ==================== Group Selection ====================
         "groups_available_title": {
             "zh": "📊  可用的群组对话",
             "en": "📊  Available Group Conversations",
@@ -164,7 +164,7 @@ class I18nTexts:
             "zh": "未选择群组，退出程序",
             "en": "No group selected, exiting program",
         },
-        # ==================== 会话初始化 ====================
+        # ==================== Session Initialization ====================
         "loading_group_data": {
             "zh": "正在加载群组 {name} 的数据...",
             "en": "Loading data for group {name}...",
@@ -205,7 +205,7 @@ class I18nTexts:
             "zh": "会话初始化失败: {error}",
             "en": "Session initialization failed: {error}",
         },
-        # ==================== 对话交互 ====================
+        # ==================== Chat Interaction ====================
         "chat_start_note": {
             "zh": "开始对话  |  输入 'help' 查看命令  |  输入 'exit' 退出",
             "en": "Start chatting  |  Type 'help' for commands  |  Type 'exit' to quit",
@@ -224,7 +224,7 @@ class I18nTexts:
             "zh": "对话处理失败: {error}",
             "en": "Chat processing failed: {error}",
         },
-        # ==================== 检索结果 ====================
+        # ==================== Retrieval Results ====================
         "retrieval_title": {
             "zh": "检索到 {total} 条记忆",
             "en": "Retrieved {total} memories",
@@ -251,7 +251,7 @@ class I18nTexts:
             "en": "Single-round retrieval",
         },
         "prompt_memory_episode": {"zh": "详情：{episode}", "en": "Details: {episode}"},
-        # ==================== 命令处理 ====================
+        # ==================== Command Processing ====================
         "cmd_help_title": {"zh": "📖  可用命令", "en": "📖  Available Commands"},
         "cmd_exit": {
             "zh": "exit       退出对话（自动保存历史记录）",
@@ -301,7 +301,7 @@ class I18nTexts:
             "zh": "检测到中断信号，正在保存对话历史...",
             "en": "Interrupt detected, saving conversation history...",
         },
-        # ==================== 结构化响应 ====================
+        # ==================== Structured Response ====================
         "response_reasoning_title": {
             "zh": "🧠  完整推理过程",
             "en": "🧠  Full Reasoning Process",
@@ -314,7 +314,7 @@ class I18nTexts:
         "response_references": {"zh": "引用", "en": "References"},
         "response_no_references": {"zh": "无", "en": "None"},
         "response_assistant_title": {"zh": "🤖 Assistant", "en": "🤖 Assistant"},
-        # ==================== 配置和连接 ====================
+        # ==================== Configuration and Connection ====================
         "config_api_key_missing": {
             "zh": "LLM_API_KEY / OPENROUTER_API_KEY / OPENAI_API_KEY 未设置",
             "en": "LLM_API_KEY / OPENROUTER_API_KEY / OPENAI_API_KEY not set",
@@ -331,12 +331,12 @@ class I18nTexts:
             "zh": "MongoDB 初始化失败: {error}",
             "en": "MongoDB initialization failed: {error}",
         },
-        # ==================== 表格标题 ====================
+        # ==================== Table Headers ====================
         "table_header_index": {"zh": "#", "en": "#"},
         "table_header_group": {"zh": "Group", "en": "Group"},
         "table_header_name": {"zh": "Name", "en": "Name"},
         "table_header_count": {"zh": "Count", "en": "Count"},
-        # ==================== LLM Prompt (系统消息) ====================
+        # ==================== LLM Prompt (System Message) ====================
         "prompt_system_role_zh": {
             "zh": """你是记忆增强 AI 助手，可访问用户画像与历史对话。请用温和、合作、尊重的中文回答。
 
@@ -522,7 +522,7 @@ Schema:
         "prompt_memory_date": {"zh": "{date}", "en": "{date}"},
         "prompt_memory_subject": {"zh": "主题：{subject}", "en": "Topic: {subject}"},
         "prompt_memory_content": {"zh": "内容：{content}", "en": "Content: {content}"},
-        # ==================== 其他 ====================
+        # ==================== Others ====================
         "loading_label": {"zh": "加载", "en": "Loading"},
         "warning_label": {"zh": "警告", "en": "Warning"},
         "hint_label": {"zh": "提示", "en": "Hint"},
@@ -532,41 +532,41 @@ Schema:
     }
 
     def __init__(self, language: str = "zh"):
-        """初始化国际化文本管理器
+        """Initialize Internationalization Text Manager
 
         Args:
-            language: 语言代码，"zh" 或 "en"
+            language: Language code, "zh" or "en"
         """
         self.language = language if language in ["zh", "en"] else "zh"
 
     def get(self, key: str, **kwargs) -> str:
-        """获取指定键的文本
+        """Get text for specific key
 
         Args:
-            key: 文本键
-            **kwargs: 格式化参数
+            key: Text key
+            **kwargs: Formatting parameters
 
         Returns:
-            格式化后的文本
+            Formatted text
         """
         text_dict = self.TEXTS.get(key, {})
         text = text_dict.get(self.language, text_dict.get("zh", key))
 
-        # 如果有格式化参数，进行格式化
+        # If formatting parameters exist, format the text
         if kwargs:
             try:
                 text = text.format(**kwargs)
             except KeyError:
-                # 如果格式化失败，返回原文本
+                # If formatting fails, return original text
                 pass
 
         return text
 
     def set_language(self, language: str) -> None:
-        """设置语言
+        """Set language
 
         Args:
-            language: 语言代码，"zh" 或 "en"
+            language: Language code, "zh" or "en"
         """
         if language in ["zh", "en"]:
             self.language = language

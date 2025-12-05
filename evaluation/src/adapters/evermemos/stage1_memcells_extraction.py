@@ -115,11 +115,15 @@ def raw_data_load(locomo_data_path: str) -> Dict[str, List[RawData]]:
 
                 # Process each message in this session
                 for i, msg in enumerate(session_messages):
-                    # Generate timestamp for this message (session time + message offset)
-                    msg_timestamp = session_time + timedelta(
-                        seconds=i * 30
-                    )  # 30 seconds between messages
-                    iso_timestamp = to_iso_format(msg_timestamp)
+                    # Priority 1: Use message-level timestamp if available (e.g., evermembench)
+                    if 'time' in msg and msg['time']:
+                        # Parse message-level timestamp (strict parsing, raises on error)
+                        msg_datetime = from_iso_format(msg['time'], strict=True)
+                        iso_timestamp = to_iso_format(msg_datetime)
+                    else:
+                        # Priority 2: Generate timestamp from session time (e.g., locomo)
+                        msg_timestamp = session_time + timedelta(seconds=i * 30)
+                        iso_timestamp = to_iso_format(msg_timestamp)
 
                     # Generate unique speaker_id for this conversation
                     speaker_name = msg["speaker"]
@@ -305,12 +309,26 @@ async def memcell_extraction_from_conversation(
 
     # 处理剩余的 history（如果有）
     if history_raw_data_list:
+        # Determine timestamp: use last memcell's timestamp if available, otherwise use last message's timestamp
+        if memcell_list:
+            last_timestamp = memcell_list[-1].timestamp
+        else:
+            # Fallback: use the last raw data's timestamp if memcell_list is empty
+            # RawData.content["timestamp"] is ISO format string, guaranteed by raw_data_load
+            last_raw_data = history_raw_data_list[-1]
+            if isinstance(last_raw_data.content, dict) and "timestamp" in last_raw_data.content:
+                # Convert ISO format string to datetime
+                last_timestamp = from_iso_format(last_raw_data.content["timestamp"])
+            else:
+                # Defensive fallback (should not happen after raw_data_load fix)
+                last_timestamp = get_now_with_timezone()
+        
         memcell = MemCell(
             type=RawDataType.CONVERSATION,
             event_id=str(uuid.uuid4()),
             user_id_list=list(speakers),
             original_data=history_raw_data_list,
-            timestamp=(memcell_list[-1].timestamp if memcell_list else get_now_with_timezone()),
+            timestamp=last_timestamp,
             summary="Final segment",
         )
         original_data_list = []
@@ -416,19 +434,17 @@ async def process_single_conversation(
             group_name=f"LoComo Conversation {conv_id}",
         )
 
-
-
-        # Extract MemCells（传递前瞻提取配置）
-        memcell_list = await memcell_extraction_from_conversation(
-            raw_data_list,
-            llm_provider=llm_provider,
-            memcell_extractor=memcell_extractor,
-            conv_id=conv_id,
-            progress=progress,
-            task_id=task_id,
-            enable_foresight_extraction=config.enable_foresight_extraction if config else False,
-        )
-        # print(f"   ✅ Conv {conv_id}: {len(memcell_list)} memcells extracted")  # Commented to avoid interrupting progress bar
+    # Extract MemCells
+    memcell_list = await memcell_extraction_from_conversation(
+        raw_data_list,
+        llm_provider=llm_provider,
+        memcell_extractor=memcell_extractor,
+        conv_id=conv_id,
+        progress=progress,
+        task_id=task_id,
+        enable_foresight_extraction=config.enable_foresight_extraction if config else False,
+    )
+    # print(f"   ✅ Conv {conv_id}: {len(memcell_list)} memcells extracted")  # Commented to avoid interrupting progress bar
 
     # Convert timestamps to datetime objects before saving
     for memcell in memcell_list:
@@ -555,14 +571,14 @@ async def process_single_conversation(
         
         profile_stats = profile_mgr.get_stats()
 
-        # Save statistics
-        stats_output = {
-            "conv_id": conv_id,
-            "memcells": len(memcell_list),
-            "clustering_enabled": config.enable_clustering if config else False,
-            "profile_enabled": config.enable_profile_extraction if config else False,
-            "foresight_enabled": config.enable_foresight_extraction if config else False,
-        }
+    # Save statistics
+    stats_output = {
+        "conv_id": conv_id,
+        "memcells": len(memcell_list),
+        "clustering_enabled": config.enable_clustering if config else False,
+        "profile_enabled": config.enable_profile_extraction if config else False,
+        "foresight_enabled": config.enable_foresight_extraction if config else False,
+    }
 
     if cluster_stats:
         stats_output["clustering"] = cluster_stats

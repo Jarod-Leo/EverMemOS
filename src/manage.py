@@ -15,10 +15,6 @@ nest_asyncio.apply()
 import typer
 from typer import Typer
 
-# 添加src目录到Python路径
-from import_parent_dir import add_parent_path
-
-add_parent_path(0)
 
 # 创建 Typer 应用
 cli = Typer(help="Memsys Backend 管理工具")
@@ -39,11 +35,17 @@ def setup_environment_and_app(env_file: str = ".env"):
     if _initialized:
         return
 
-    from common_utils.load_env import setup_environment
-    from application_startup import setup_all
+    # 添加src目录到Python路径
+    from import_parent_dir import add_parent_path
+
+    add_parent_path(0)
 
     # 加载环境变量
+    from common_utils.load_env import setup_environment
+
     setup_environment(load_env_file_name=env_file, check_env_var="GEMINI_API_KEY")
+
+    from application_startup import setup_all
 
     setup_all()
     _initialized = True
@@ -144,10 +146,7 @@ def shell(
     """
     setup_environment_and_app(env_file)
 
-    from app import app
     from core.observation.logger import get_logger
-    from core.di.utils import get_bean_by_type
-    from core.context.context_manager import ContextManager
 
     logger = get_logger(__name__)
 
@@ -224,13 +223,13 @@ def tenant_init(
         # 使用自定义环境文件
         python src/manage.py tenant-init --env-file .env.production
     """
+
+    # 先设置环境和应用
+    setup_environment_and_app(env_file)
+
     from core.observation.logger import get_logger
 
     logger = get_logger(__name__)
-
-    # 先设置环境和应用
-    logger.info("正在设置环境和应用...")
-    setup_environment_and_app(env_file)
 
     # 导入租户初始化模块
     from core.tenants.init_tenant_all import run_tenant_init

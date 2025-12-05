@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-数据库数据查看工具
+Database Data Viewer Tool
 
-用法：
-    python debug_view_databases.py                    # 查看所有数据库概览
-    python debug_view_databases.py --mongo            # 只查看 MongoDB
-    python debug_view_databases.py --milvus           # 只查看 Milvus
-    python debug_view_databases.py --es               # 只查看 Elasticsearch
-    python debug_view_databases.py --detail           # 显示详细数据（包括样例）
+Usage:
+    python debug_view_databases.py                    # View all databases overview
+    python debug_view_databases.py --mongo            # View MongoDB only
+    python debug_view_databases.py --milvus           # View Milvus only
+    python debug_view_databases.py --es               # View Elasticsearch only
+    python debug_view_databases.py --detail           # Show detailed data (including samples)
 """
 
 import asyncio
@@ -21,7 +21,7 @@ import json
 
 
 class Colors:
-    """终端颜色"""
+    """Terminal Colors"""
 
     HEADER = '\033[95m'
     BLUE = '\033[94m'
@@ -34,102 +34,102 @@ class Colors:
 
 
 def print_section(title: str):
-    """打印章节标题"""
+    """Print Section Title"""
     print(f"\n{Colors.BOLD}{Colors.BLUE}{'='*80}{Colors.END}")
     print(f"{Colors.BOLD}{Colors.CYAN}{title}{Colors.END}")
     print(f"{Colors.BOLD}{Colors.BLUE}{'='*80}{Colors.END}\n")
 
 
 def print_subsection(title: str):
-    """打印子章节标题"""
+    """Print Subsection Title"""
     print(f"\n{Colors.BOLD}{Colors.GREEN}--- {title} ---{Colors.END}")
 
 
 def print_success(text: str):
-    """打印成功信息"""
+    """Print Success Message"""
     print(f"{Colors.GREEN}✅ {text}{Colors.END}")
 
 
 def print_warning(text: str):
-    """打印警告信息"""
+    """Print Warning Message"""
     print(f"{Colors.YELLOW}⚠️  {text}{Colors.END}")
 
 
 def print_error(text: str):
-    """打印错误信息"""
+    """Print Error Message"""
     print(f"{Colors.RED}❌ {text}{Colors.END}")
 
 
 async def check_mongodb(detail: bool = False):
-    """检查 MongoDB 数据"""
-    print_section("MongoDB 数据")
+    """Check MongoDB Data"""
+    print_section("MongoDB Data")
 
     try:
-        # 连接配置（无认证）
+        # Connection Config (No Auth)
         mongo_host = os.getenv('MONGO_HOST', 'localhost')
         mongo_port = int(os.getenv('MONGO_PORT', '27017'))
 
         client = AsyncMongoClient(f'mongodb://{mongo_host}:{mongo_port}')
         db = client['memsys']
 
-        print_success(f"已连接到 MongoDB: {mongo_host}:{mongo_port}")
+        print_success(f"Connected to MongoDB: {mongo_host}:{mongo_port}")
 
-        # 动态获取所有集合
+        # Dynamically get all collections
         collection_names = await db.list_collection_names()
         collection_names.sort()
 
         if not collection_names:
-            print_warning("数据库中没有集合")
+            print_warning("No collections in database")
             return
 
         for collection_name in collection_names:
-            # 跳过系统集合
+            # Skip system collections
             if collection_name.startswith("system."):
                 continue
 
-            print_subsection(f"集合: {collection_name}")
+            print_subsection(f"Collection: {collection_name}")
 
             collection = db[collection_name]
             total = await collection.count_documents({})
 
             if total == 0:
-                print_warning(f"无数据")
+                print_warning(f"No data")
                 continue
 
-            print(f"总数: {Colors.BOLD}{total}{Colors.END} 条")
+            print(f"Total: {Colors.BOLD}{total}{Colors.END} items")
 
-            # 按 user_id 统计 (如果存在)
+            # Count by user_id (if exists)
             try:
                 pipeline = [
                     {'$group': {'_id': '$user_id', 'count': {'$sum': 1}}},
                     {'$sort': {'count': -1}},
                 ]
-                # 检查是否有 user_id 字段（简单采样检查）
+                # Check for user_id field (simple sampling)
                 sample = await collection.find_one()
                 if sample and 'user_id' in sample:
                     cursor = await collection.aggregate(pipeline)
                     result = await cursor.to_list(length=None)
 
                     if result:
-                        print("\n按 user_id 分组:")
-                        for item in result[:10]:  # 只显示前 10 个
-                            user_id = item['_id'] if item['_id'] else '(空/群组)'
-                            print(f"  - {user_id}: {item['count']} 条")
+                        print("\nGroup by user_id:")
+                        for item in result[:10]:  # Show top 10 only
+                            user_id = item['_id'] if item['_id'] else '(Empty/Group)'
+                            print(f"  - {user_id}: {item['count']} items")
             except Exception:
-                pass  # 忽略聚合错误
+                pass  # Ignore aggregation errors
 
-            # 显示样例
+            # Show samples
             if detail:
-                print("\n样例数据:")
+                print("\nSample data:")
                 cursor = collection.find().limit(2)
                 async for doc in cursor:
-                    # 移除过长的字段
+                    # Remove overly long fields
                     doc.pop('_id', None)
                     doc.pop('vector', None)
                     doc.pop('embedding', None)
                     doc.pop('original_data', None)
 
-                    # 限制字段长度
+                    # Limit field length
                     for key, value in doc.items():
                         if isinstance(value, str) and len(value) > 100:
                             doc[key] = value[:100] + '...'
@@ -141,15 +141,15 @@ async def check_mongodb(detail: bool = False):
         client.close()
 
     except Exception as e:
-        print_error(f"MongoDB 连接失败: {e}")
+        print_error(f"MongoDB connection failed: {e}")
 
 
 def _get_milvus_row_count(collection_name: str, collection: Collection) -> int:
     """
-    获取 Milvus 实时实体数。
+    Get real-time entity count from Milvus.
 
-    优先使用 utility.get_collection_stats (如果该 API 可用)，
-    其次尝试 utility.get_query_segment_info，最后回退到 num_entities。
+    Prioritize utility.get_collection_stats (if available),
+    then try utility.get_query_segment_info, and finally fallback to num_entities.
     """
     get_stats = getattr(utility, "get_collection_stats", None)
     if callable(get_stats):
@@ -173,23 +173,23 @@ def _get_milvus_row_count(collection_name: str, collection: Collection) -> int:
 
 
 def check_milvus(detail: bool = False):
-    """检查 Milvus 数据"""
-    print_section("Milvus 数据")
+    """Check Milvus Data"""
+    print_section("Milvus Data")
 
     try:
-        # 连接配置
+        # Connection Config
         milvus_host = os.getenv('MILVUS_HOST', 'localhost')
         milvus_port = int(os.getenv('MILVUS_PORT', '19530'))
 
         connections.connect(host=milvus_host, port=milvus_port)
-        print_success(f"已连接到 Milvus: {milvus_host}:{milvus_port}")
+        print_success(f"Connected to Milvus: {milvus_host}:{milvus_port}")
 
-        # 动态获取所有集合
+        # Dynamically get all collections
         all_collections = utility.list_collections()
         all_collections.sort()
 
         if not all_collections:
-            print_warning("Milvus 中没有集合")
+            print_warning("No collections in Milvus")
             return
 
         for collection_name in all_collections:
@@ -199,14 +199,14 @@ def check_milvus(detail: bool = False):
             collection.load()
 
             stats = _get_milvus_row_count(collection_name, collection)
-            print(f"当前实体数: {Colors.BOLD}{stats}{Colors.END} 条")
+            print(f"Current Entities: {Colors.BOLD}{stats}{Colors.END}")
 
-            # 查询样例
+            # Query samples
             if detail and stats > 0:
-                print("\n样例数据:")
+                print("\nSample Data:")
 
-                # 原有的查询逻辑依赖 'id' 字段，如果集合主键不是 'id' 会报错
-                # 我们暂时仅保留计数功能，或者仅对已知集合查样例
+                # Original query logic depends on 'id' field, will fail if PK is not 'id'
+                # We temporarily only keep counting, or only query samples for known collections
                 known_pk_map = {
                     'episodic_memory_memsys': 'id',
                     'foresight_memsys': 'id',
@@ -236,62 +236,62 @@ def check_milvus(detail: bool = False):
                                 f"  {json.dumps(result, ensure_ascii=False, indent=2, default=str)}"
                             )
                     except Exception as e:
-                        print(f"  查询样例失败: {e}")
+                        print(f"  Query sample failed: {e}")
                 else:
-                    print("  (未配置主键字段，跳过样例查询)")
+                    print("  (No primary key configured, skipping sample query)")
 
         connections.disconnect("default")
 
     except Exception as e:
-        print_error(f"Milvus 连接失败: {e}")
+        print_error(f"Milvus connection failed: {e}")
 
 
 async def check_elasticsearch(detail: bool = False):
-    """检查 Elasticsearch 数据"""
-    print_section("Elasticsearch 数据")
+    """Check Elasticsearch Data"""
+    print_section("Elasticsearch Data")
 
     try:
-        # 连接配置
+        # Connection Config
         es_host = os.getenv('ES_HOSTS', 'http://localhost:19200')
 
-        # 使用 HTTP 直接查询，避免版本兼容问题
+        # Use HTTP direct query to avoid version compatibility issues
         import aiohttp
 
         async with aiohttp.ClientSession() as session:
-            print_success(f"已连接到 Elasticsearch: {es_host}")
+            print_success(f"Connected to Elasticsearch: {es_host}")
 
-            # 获取所有索引
+            # Get all indices
             async with session.get(f"{es_host}/_cat/indices?format=json") as resp:
                 if resp.status != 200:
-                    print_error(f"获取索引列表失败: {resp.status}")
+                    print_error(f"Failed to get index list: {resp.status}")
                     return
                 indices = await resp.json()
 
-            # 显示所有索引（不过滤）
+            # Show all indices (no filter)
             relevant_indices = indices
 
             if not relevant_indices:
-                print_warning("没有找到相关索引")
+                print_warning("No relevant indices found")
                 return
 
-            # 按索引名排序
+            # Sort by index name
             relevant_indices.sort(key=lambda x: x['index'])
 
             for idx_info in relevant_indices:
                 idx_name = idx_info['index']
-                # 跳过系统索引
+                # Skip system indices
                 if idx_name.startswith('.'):
                     continue
 
                 doc_count = int(idx_info['docs.count'])
 
-                print_subsection(f"{idx_name} ({doc_count} 条)")
+                print_subsection(f"{idx_name} ({doc_count} items)")
 
                 if doc_count == 0:
-                    print_warning("无数据")
+                    print_warning("No data")
                     continue
 
-                # 使用聚合查询统计所有 type
+                # Use aggregation query to count all types
                 try:
                     aggs_body = {
                         "size": 0,
@@ -312,16 +312,16 @@ async def check_elasticsearch(detail: bool = False):
                             if buckets:
                                 for bucket in buckets:
                                     print(
-                                        f"  - type={bucket['key']}: {bucket['doc_count']} 条"
+                                        f"  - type={bucket['key']}: {bucket['doc_count']} items"
                                     )
                             else:
-                                print(f"  - (无 type 字段分类)")
+                                print(f"  - (No type field classification)")
                 except Exception as e:
-                    print_warning(f"聚合统计失败: {e}")
+                    print_warning(f"Aggregation statistics failed: {e}")
 
-                # 显示样例
+                # Show samples
                 if detail and doc_count > 0:
-                    print("\n样例数据:")
+                    print("\nSample data:")
                     try:
                         query_body = {"size": 2}
                         async with session.post(
@@ -335,7 +335,7 @@ async def check_elasticsearch(detail: bool = False):
                                 for hit in result['hits']['hits']:
                                     src = hit['_source']
 
-                                    # 限制字段长度
+                                    # Limit field length
                                     for key, value in src.items():
                                         if isinstance(value, str) and len(value) > 100:
                                             src[key] = value[:100] + '...'
@@ -344,40 +344,40 @@ async def check_elasticsearch(detail: bool = False):
                                         f"  {json.dumps(src, ensure_ascii=False, indent=2, default=str)}"
                                     )
                     except Exception as e:
-                        print_warning(f"查询样例失败: {e}")
+                        print_warning(f"Query sample failed: {e}")
 
     except Exception as e:
-        print_error(f"Elasticsearch 连接失败: {e}")
+        print_error(f"Elasticsearch connection failed: {e}")
 
 
 async def main():
-    """主函数"""
+    """Main function"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='查看数据库数据')
-    parser.add_argument('--mongo', action='store_true', help='只查看 MongoDB')
-    parser.add_argument('--milvus', action='store_true', help='只查看 Milvus')
-    parser.add_argument('--es', action='store_true', help='只查看 Elasticsearch')
+    parser = argparse.ArgumentParser(description='View database data')
+    parser.add_argument('--mongo', action='store_true', help='View MongoDB only')
+    parser.add_argument('--milvus', action='store_true', help='View Milvus only')
+    parser.add_argument('--es', action='store_true', help='View Elasticsearch only')
     parser.add_argument(
-        '--detail', action='store_true', help='显示详细数据（包括样例）'
+        '--detail', action='store_true', help='Show detailed data (including samples)'
     )
 
     args = parser.parse_args()
 
-    # 加载 .env 文件（如果存在）
+    # Load .env file (if exists)
     if os.path.exists('.env'):
         from dotenv import load_dotenv
 
         load_dotenv()
 
     print(f"\n{Colors.BOLD}{Colors.HEADER}{'='*80}{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.HEADER}数据库数据查看工具{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.HEADER}Database Data Viewer Tool{Colors.END}")
     print(f"{Colors.BOLD}{Colors.HEADER}{'='*80}{Colors.END}")
     print(
-        f"\n{Colors.CYAN}时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END}"
+        f"\n{Colors.CYAN}Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}{Colors.END}"
     )
 
-    # 如果没有指定任何数据库，则查看所有
+    # If no database specified, view all
     if not (args.mongo or args.milvus or args.es):
         args.mongo = args.milvus = args.es = True
 
@@ -391,7 +391,7 @@ async def main():
         await check_elasticsearch(args.detail)
 
     print(f"\n{Colors.BOLD}{Colors.GREEN}{'='*80}{Colors.END}")
-    print(f"{Colors.BOLD}{Colors.GREEN}✅ 完成{Colors.END}")
+    print(f"{Colors.BOLD}{Colors.GREEN}✅ Completed{Colors.END}")
     print(f"{Colors.BOLD}{Colors.GREEN}{'='*80}{Colors.END}\n")
 
 

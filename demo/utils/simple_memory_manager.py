@@ -11,55 +11,55 @@ from common_utils.datetime_utils import get_now_with_timezone, to_iso_format
 
 
 def extract_event_time_from_memory(mem: Dict[str, Any]) -> str:
-    """从记忆数据中提取事件实际发生时间
+    """Extract actual event time from memory data
 
-    提取优先级：
-    1. subject 字段中的日期（括号格式，如 "(2025-08-26)"）
-    2. subject 字段中的日期（中文格式，如 "2025年8月26日"）
-    3. episode 内容中的日期（中文或 ISO 格式）
-    4. 如果都提取不到，返回 "N/A"（不显示存储时间）
+    Extraction priority:
+    1. Date in 'subject' field (parentheses format, e.g., "(2025-08-26)")
+    2. Date in 'subject' field (Chinese format, e.g., "2025年8月26日")
+    3. Date in 'episode' content (Chinese or ISO format)
+    4. Return "N/A" if extraction fails (do not show storage time)
 
     Args:
-        mem: 记忆字典，包含 subject, episode 等字段
+        mem: Memory dictionary containing subject, episode, etc.
 
     Returns:
-        日期字符串，格式为 YYYY-MM-DD，或 "N/A"
+        Date string in YYYY-MM-DD format, or "N/A"
     """
     subject = mem.get("subject", "")
     episode = mem.get("episode", "")
 
-    # 1. 从 subject 提取：匹配括号内的 ISO 日期格式 (YYYY-MM-DD)
+    # 1. Extract from subject: Match ISO date format inside parentheses (YYYY-MM-DD)
     if subject:
         match = re.search(r'\((\d{4}-\d{2}-\d{2})\)', subject)
         if match:
             return match.group(1)
 
-        # 2. 从 subject 提取：匹配中文日期格式 "YYYY年MM月DD日"
+        # 2. Extract from subject: Match Chinese date format "YYYY年MM月DD日"
         match = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', subject)
         if match:
             year, month, day = match.groups()
             return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
 
-    # 3. 从 episode 提取（搜索整个内容，不限制字符数）
+    # 3. Extract from episode (search entire content, no character limit)
     if episode:
-        # 匹配 "于YYYY年MM月DD日" 或 "在YYYY年MM月DD日"
+        # Match "于YYYY年MM月DD日" or "在YYYY年MM月DD日"
         match = re.search(r'[于在](\d{4})年(\d{1,2})月(\d{1,2})日', episode)
         if match:
             year, month, day = match.groups()
             return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
 
-        # 匹配 ISO 格式 "YYYY-MM-DD"
+        # Match ISO format "YYYY-MM-DD"
         match = re.search(r'(\d{4})-(\d{2})-(\d{2})', episode)
         if match:
             return match.group(0)
 
-        # 匹配其他中文日期格式（不带"于/在"前缀）
+        # Match other Chinese date formats (without "at" prefix)
         match = re.search(r'(\d{4})年(\d{1,2})月(\d{1,2})日', episode)
         if match:
             year, month, day = match.groups()
             return f"{year}-{month.zfill(2)}-{day.zfill(2)}"
 
-    # 4. 无法提取事件时间，返回 N/A（不显示存储时间）
+    # 4. Failed to extract event time, return N/A
     return "N/A"
 
 
@@ -95,7 +95,7 @@ class SimpleMemoryManager:
         self.retrieve_url = f"{base_url}/api/v3/agentic/retrieve_lightweight"
         self.conversation_meta_url = f"{base_url}/api/v3/agentic/conversation-meta"
         self._message_counter = 0
-        self._conversation_meta_saved = False  # 标记是否已保存 conversation-meta
+        self._conversation_meta_saved = False  # Flag to indicate if conversation-meta is saved
 
     async def store(self, content: str, sender: str = "User") -> bool:
         """Store a message
@@ -107,7 +107,7 @@ class SimpleMemoryManager:
         Returns:
             Success status
         """
-        # ========== 第一次存储时，先保存 conversation-meta ==========
+        # ========== Save conversation-meta first when storing for the first time ==========
         if not self._conversation_meta_saved:
             await self._save_conversation_meta()
 
@@ -130,7 +130,7 @@ class SimpleMemoryManager:
             "content": content,
             "group_id": self.group_id,
             "group_name": self.group_name,
-            "scene": self.scene,  # 使用配置的 scene
+            "scene": self.scene,  # Use configured scene
         }
 
         try:
@@ -166,7 +166,7 @@ class SimpleMemoryManager:
 
     async def _save_conversation_meta(self) -> bool:
         """
-        保存对话元数据（首次存储消息时调用）
+        Save conversation metadata (called when storing the first message)
 
         Returns:
             Success status
@@ -174,7 +174,7 @@ class SimpleMemoryManager:
         if self._conversation_meta_saved:
             return True
 
-        # 构建 conversation-meta 请求数据
+        # Build conversation-meta request data
         now = get_now_with_timezone()
         conversation_meta_request = {
             "version": "1.0.0",
@@ -214,18 +214,18 @@ class SimpleMemoryManager:
                     print(
                         f"  ⚠️  Failed to save conversation metadata: {result.get('message')}"
                     )
-                    # 即使失败也标记为已保存，避免重复尝试
+                    # Mark as saved even if failed to avoid retrying repeatedly
                     self._conversation_meta_saved = True
                     return False
 
         except httpx.ConnectError:
             print(f"  ⚠️  Cannot connect to API server for conversation metadata")
-            # 标记为已保存，避免重复尝试
+            # Mark as saved even if failed to avoid retrying repeatedly
             self._conversation_meta_saved = True
             return False
         except Exception as e:
             print(f"  ⚠️  Failed to save conversation metadata: {e}")
-            # 标记为已保存，避免重复尝试
+            # Mark as saved even if failed to avoid retrying repeatedly
             self._conversation_meta_saved = True
             return False
 
@@ -261,7 +261,7 @@ class SimpleMemoryManager:
                 result = response.json()
 
                 if result.get("status") == "ok":
-                    print(result)
+                    # print(result)
                     memories = result.get("result", {}).get("memories", [])
                     metadata = result.get("result", {}).get("metadata", {})
                     latency = metadata.get("total_latency_ms", 0)
@@ -299,7 +299,7 @@ class SimpleMemoryManager:
 
         for i, mem in enumerate(memories, 1):
             score = mem.get('score', 0)
-            # 提取事件实际发生时间（不是存储时间）
+            # Extract actual event time (not storage time)
             event_time = extract_event_time_from_memory(mem)
             subject = mem.get('subject', '')
             summary = mem.get('summary', '')

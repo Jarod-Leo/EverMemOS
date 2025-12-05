@@ -1,10 +1,10 @@
-"""聊天应用编排器
+"""Chat Application Orchestrator
 
-负责整个聊天应用的流程编排：
-1. 初始化配置
-2. 用户交互（语言、场景、群组、检索模式选择）
-3. 会话管理
-4. 对话循环
+Responsible for the orchestration of the entire chat application:
+1. Initialization configuration
+2. User interaction (language, scenario, group, retrieval mode selection)
+3. Session management
+4. Conversation loop
 """
 
 import asyncio
@@ -24,7 +24,7 @@ from .selectors import LanguageSelector, ScenarioSelector, GroupSelector
 
 
 class ChatOrchestrator:
-    """聊天应用编排器"""
+    """Chat Application Orchestrator"""
     
     def __init__(self, project_root: Path):
         self.project_root = project_root
@@ -32,16 +32,16 @@ class ChatOrchestrator:
         self._configure_logging()
     
     def _configure_logging(self):
-        """配置日志 - 隐藏第三方库的 DEBUG 日志"""
+        """Configure logging - Hide DEBUG logs from third-party libraries"""
         logging.basicConfig(level=logging.WARNING, format='%(levelname)s: %(message)s')
         logging.getLogger().setLevel(logging.WARNING)
         
-        # 禁用常见第三方库日志
+        # Disable common third-party library logs
         for logger_name in ['jieba', 'elasticsearch', 'urllib3', 'pymongo', 'pymilvus']:
             logging.getLogger(logger_name).setLevel(logging.ERROR)
     
     def setup_readline(self):
-        """配置 readline 历史记录"""
+        """Configure readline history"""
         try:
             import readline
             if self.history_file.exists():
@@ -51,7 +51,7 @@ class ChatOrchestrator:
             pass
     
     def save_readline_history(self):
-        """保存 readline 历史记录"""
+        """Save readline history"""
         try:
             import readline
             readline.write_history_file(str(self.history_file))
@@ -59,12 +59,12 @@ class ChatOrchestrator:
             pass
     
     async def select_language(self) -> I18nTexts:
-        """语言选择"""
+        """Language selection"""
         language = LanguageSelector.select_language()
         return I18nTexts(language)
     
     async def select_scenario(self, texts: I18nTexts) -> Optional[str]:
-        """场景选择"""
+        """Scenario selection"""
         ChatUI.clear_screen()
         ChatUI.print_banner(texts)
         
@@ -76,7 +76,7 @@ class ChatOrchestrator:
         return scenario_type
     
     async def initialize_database(self, texts: I18nTexts) -> bool:
-        """初始化数据库连接"""
+        """Initialize database connection"""
         mongo_config = MongoDBConfig()
         
         try:
@@ -87,7 +87,7 @@ class ChatOrchestrator:
             return False
     
     async def select_group(self, texts: I18nTexts) -> Optional[str]:
-        """群组选择"""
+        """Group selection"""
         groups = await GroupSelector.list_available_groups()
         selected_group_id = await GroupSelector.select_group(groups, texts)
         
@@ -98,13 +98,13 @@ class ChatOrchestrator:
         return selected_group_id
     
     async def select_retrieval_mode(self, texts: I18nTexts) -> str:
-        """检索模式选择
+        """Retrieval mode selection
         
         Args:
-            texts: 国际化文本对象
+            texts: I18nTexts object
             
         Returns:
-            检索模式字符串
+            Retrieval mode string
         """
         ui = CLIUI()
         print()
@@ -132,7 +132,7 @@ class ChatOrchestrator:
                 
                 index = int(choice)
                 if index in mode_map:
-                    # 特殊提示：Agentic 模式需要 LLM
+                    # Special hint: Agentic mode requires LLM
                     if index == 4:
                         print()
                         ui.note(texts.get("retrieval_mode_agentic_cost_warning"), icon="💰")
@@ -149,7 +149,7 @@ class ChatOrchestrator:
                 raise
     
     def verify_api_key(self, llm_config: LLMConfig, texts: I18nTexts) -> bool:
-        """验证 API Key 是否配置"""
+        """Verify if API Key is configured"""
         import os
         api_key_present = any([
             llm_config.api_key,
@@ -171,7 +171,7 @@ class ChatOrchestrator:
         retrieval_mode: str,
         texts: I18nTexts,
     ) -> Optional[ChatSession]:
-        """创建并初始化会话"""
+        """Create and initialize session"""
         chat_config = ChatModeConfig()
         llm_config = LLMConfig()
         
@@ -181,7 +181,7 @@ class ChatOrchestrator:
             llm_config=llm_config,
             scenario_type=scenario_type,
             retrieval_mode=retrieval_mode,
-            data_source="episode",  # 固定使用 episode
+            data_source="episode",  # Fixed: use episode
             texts=texts,
         )
         
@@ -192,12 +192,12 @@ class ChatOrchestrator:
         return session
     
     async def run_chat_loop(self, session: ChatSession, texts: I18nTexts):
-        """运行对话循环"""
-        # 刷新屏幕，进入干净的对话界面
+        """Run conversation loop"""
+        # Clear screen, enter clean chat interface
         ChatUI.clear_screen()
         ChatUI.print_banner(texts)
         
-        # 显示开始提示
+        # Show start note
         ui = CLIUI()
         print()
         ui.rule()
@@ -214,7 +214,7 @@ class ChatOrchestrator:
                 
                 command = user_input.lower()
                 
-                # 处理命令
+                # Handle commands
                 if command == "exit":
                     await self._handle_exit(session, texts)
                     break
@@ -228,7 +228,7 @@ class ChatOrchestrator:
                     ChatUI.print_help(texts)
                     continue
                 
-                # 执行对话
+                # Execute chat
                 response = await session.chat(user_input)
                 ChatUI.print_assistant_response(response, texts)
             
@@ -243,7 +243,7 @@ class ChatOrchestrator:
                 print()
     
     async def _handle_exit(self, session: ChatSession, texts: I18nTexts):
-        """处理退出命令"""
+        """Handle exit command"""
         ui = CLIUI()
         print()
         ui.note(texts.get("cmd_exit_saving"), icon="💾")
@@ -253,7 +253,7 @@ class ChatOrchestrator:
         print()
     
     async def _handle_interrupt(self, session: ChatSession, texts: I18nTexts):
-        """处理中断信号"""
+        """Handle interrupt signal"""
         ui = CLIUI()
         print("\n")
         ui.note(texts.get("cmd_interrupt_saving"), icon="⚠️")
@@ -263,52 +263,52 @@ class ChatOrchestrator:
         print()
     
     async def run(self):
-        """运行聊天应用主流程"""
-        # 1. 初始化 readline
+        """Run chat application main flow"""
+        # 1. Initialize readline
         self.setup_readline()
         
-        # 2. 刷新屏幕，然后语言选择
+        # 2. Clear screen, then language selection
         ChatUI.clear_screen()
         texts = await self.select_language()
         
-        # 3. 场景选择
+        # 3. Scenario selection
         scenario_type = await self.select_scenario(texts)
         if not scenario_type:
             return
         
-        # 4. 刷新屏幕
+        # 4. Clear screen
         ChatUI.clear_screen()
         ChatUI.print_banner(texts)
         
-        # 5. 验证 API Key
+        # 5. Verify API Key
         llm_config = LLMConfig()
         if not self.verify_api_key(llm_config, texts):
             return
         
-        # 6. 初始化数据库
+        # 6. Initialize database
         if not await self.initialize_database(texts):
             return
         
-        # 7. 群组选择
+        # 7. Group selection
         group_id = await self.select_group(texts)
         if not group_id:
             return
         
-        # 8. 检索模式选择
+        # 8. Retrieval mode selection
         try:
             retrieval_mode = await self.select_retrieval_mode(texts)
         except KeyboardInterrupt:
             print("\n")
             return
         
-        # 9. 创建会话
+        # 9. Create session
         session = await self.create_session(group_id, scenario_type, retrieval_mode, texts)
         if not session:
             return
         
-        # 10. 运行对话循环
+        # 10. Run conversation loop
         await self.run_chat_loop(session, texts)
         
-        # 11. 保存历史
+        # 11. Save history
         self.save_readline_history()
 

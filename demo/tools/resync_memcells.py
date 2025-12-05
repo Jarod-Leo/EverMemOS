@@ -1,7 +1,7 @@
 """
-批量将 MongoDB 中现有的 MemCell.episode 重新同步到 Milvus / ES。
+Batch resync existing MemCell.episode from MongoDB to Milvus / ES.
 
-运行方式：
+Usage:
     uv run python src/bootstrap.py demo/tools/resync_memcells.py
 """
 
@@ -21,18 +21,17 @@ async def main() -> None:
 
     memcells: List[MemCell] = await MemCell.find_all().to_list()
     if not memcells:
-        logger.info("MongoDB 中没有 MemCell 记录，跳过")
+        logger.info("No MemCell records in MongoDB, skipping")
         return
 
-    logger.info("开始重同步 %s 条 MemCell 记录", len(memcells))
+    logger.info("Starting resync of %s MemCell records", len(memcells))
     success = 0
     for memcell in memcells:
         await service.sync_memcell(memcell, sync_to_es=True, sync_to_milvus=True)
         success += 1
 
-    logger.info("完成重同步，成功 %s 条", success)
+    logger.info("Resync completed, success: %s", success)
 
 
 if __name__ == "__main__":
     asyncio.run(main())
-

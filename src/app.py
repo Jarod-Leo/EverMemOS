@@ -10,7 +10,7 @@ from core.capability.app_capability import ApplicationCapability
 from core.observation.logger import get_logger
 from core.interface.controller.base_controller import BaseController
 from core.middleware.user_context_middleware import UserContextMiddleware
-from core.middleware.app_context_middleware import AppContextMiddleware
+from core.middleware.app_logic_middleware import AppLogicMiddleware
 from fastapi.middleware import Middleware
 
 from base_app import create_base_app
@@ -114,7 +114,7 @@ def create_business_app(
     )
 
     # 添加业务相关的中间件
-    fastapi_app.user_middleware.append(Middleware(AppContextMiddleware))
+    fastapi_app.user_middleware.append(Middleware(AppLogicMiddleware))
     # 不直接对接用户
     # fastapi_app.user_middleware.append(Middleware(UserContextMiddleware))
 
