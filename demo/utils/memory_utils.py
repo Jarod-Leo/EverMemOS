@@ -6,12 +6,10 @@
 - MongoDB 连接和初始化
 - MemCell 查询
 - 时间序列化工具
-- Prompt 语言设置
 
 V4 更新：
 - 删除了自定义检索策略（使用 src 中的 API）
 - 保留基础工具函数
-- 新增 Prompt 语言设置功能
 """
 
 import json
@@ -30,34 +28,7 @@ from infra_layer.adapters.out.persistence.document.memory.memcell import (
 from demo.config import MongoDBConfig
 
 # 从 common_utils 导入语言工具函数
-from common_utils.language_utils import (
-    get_prompt_language,
-    set_prompt_language as _set_prompt_language,
-)
-
-
-# ============================================================================
-# Prompt 语言设置（使用 common_utils.language_utils）
-# ============================================================================
-
-
-def set_prompt_language(language: str) -> None:
-    """设置记忆提取的 Prompt 语言
-
-    通过设置环境变量 MEMORY_LANGUAGE 来控制 src/memory_layer/prompts 使用的语言。
-    这会影响所有记忆提取器（MemCell、Profile、Episode、 Foresight）使用的 Prompt。
-
-    Args:
-        language: 语言代码，"zh" 或 "en"
-
-    注意：
-        - 必须在导入 memory_layer 相关模块之前调用
-        - 建议在程序启动时立即调用
-    """
-    if _set_prompt_language(language):
-        print(f"[Prompt Language] 已设置为: {language} (影响所有记忆提取 Prompt)")
-    else:
-        print(f"[Warning] 不支持的语言 '{language}'，将使用默认语言 'en'")
+from common_utils.language_utils import get_prompt_language
 
 
 # ============================================================================

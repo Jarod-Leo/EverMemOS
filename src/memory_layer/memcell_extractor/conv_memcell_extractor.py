@@ -21,8 +21,7 @@ from common_utils.datetime_utils import (
 from memory_layer.llm.llm_provider import LLMProvider
 from api_specs.memory_types import RawDataType
 
-# 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from memory_layer.prompts import CONV_BOUNDARY_DETECTION_PROMPT
+from memory_layer.prompts import get_prompt_by
 from memory_layer.memcell_extractor.base_memcell_extractor import (
     MemCellExtractor,
     RawData,
@@ -75,8 +74,8 @@ class ConvMemCellExtractor(MemCellExtractor):
         super().__init__(RawDataType.CONVERSATION, llm_provider)
         self.llm_provider = llm_provider
         
-        # 使用根据 MEMORY_LANGUAGE 环境变量自动选择的提示词
-        self.conv_boundary_detection_prompt = CONV_BOUNDARY_DETECTION_PROMPT
+        # 使用 PromptManager 获取提示词（根据 MEMORY_LANGUAGE 环境变量自动选择）
+        self.conv_boundary_detection_prompt = get_prompt_by("CONV_BOUNDARY_DETECTION_PROMPT")
 
     def shutdown(self) -> None:
         """Cleanup resources."""

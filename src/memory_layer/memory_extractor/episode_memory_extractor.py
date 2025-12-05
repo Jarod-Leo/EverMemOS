@@ -11,14 +11,7 @@ from datetime import datetime
 import re, json, asyncio, uuid
 
 
-# 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from memory_layer.prompts import (
-    EPISODE_GENERATION_PROMPT,
-    GROUP_EPISODE_GENERATION_PROMPT,
-    DEFAULT_CUSTOM_INSTRUCTIONS,
-)
-
-
+from memory_layer.prompts import get_prompt_by
 from memory_layer.llm.llm_provider import LLMProvider
 
 from memory_layer.memory_extractor.base_memory_extractor import MemoryExtractor, MemoryExtractRequest
@@ -69,10 +62,10 @@ class EpisodeMemoryExtractor(MemoryExtractor):
         super().__init__(MemoryType.EPISODIC_MEMORY)
         self.llm_provider = llm_provider
         
-        # 使用自定义 prompt 或默认 prompt
-        self.episode_generation_prompt = episode_prompt or EPISODE_GENERATION_PROMPT
-        self.group_episode_generation_prompt = group_episode_prompt or GROUP_EPISODE_GENERATION_PROMPT
-        self.default_custom_instructions = custom_instructions or DEFAULT_CUSTOM_INSTRUCTIONS
+        # 使用自定义 prompt 或通过 PromptManager 获取默认 prompt
+        self.episode_generation_prompt = episode_prompt or get_prompt_by("EPISODE_GENERATION_PROMPT")
+        self.group_episode_generation_prompt = group_episode_prompt or get_prompt_by("GROUP_EPISODE_GENERATION_PROMPT")
+        self.default_custom_instructions = custom_instructions or get_prompt_by("DEFAULT_CUSTOM_INSTRUCTIONS")
 
     def _parse_timestamp(self, timestamp) -> datetime:
         """

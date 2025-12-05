@@ -6,27 +6,26 @@
 
 使用方法：
 1. 设置环境变量：export MEMORY_LANGUAGE=zh
-2. 现有代码无需修改，直接从 memory_layer.prompts 导入使用（使用默认语言）
-3. 动态获取指定语言的 Prompt：使用 get_prompt_by(prompt_name, language)
+2. 使用 get_prompt_by() 函数获取 Prompt（推荐）
 
 示例：
-    # 方式1：使用默认语言（基于环境变量）
-    from memory_layer.prompts import (
-        EPISODE_GENERATION_PROMPT,
-        CONVERSATION_PROFILE_PART1_EXTRACTION_PROMPT,
-        get_foresight_generation_prompt,
-    )
-    
-    # 方式2：动态获取指定语言的 Prompt
     from memory_layer.prompts import get_prompt_by
+    
+    # 获取默认语言的 Prompt（基于 MEMORY_LANGUAGE 环境变量）
+    prompt = get_prompt_by("EPISODE_GENERATION_PROMPT")
+    
+    # 获取指定语言的 Prompt
     prompt = get_prompt_by("EPISODE_GENERATION_PROMPT", language="zh")
+    
+    # 获取函数类型的 Prompt
+    func = get_prompt_by("get_foresight_generation_prompt")
+    result = func(...)
 """
 
 from typing import Any, Optional, Callable
 
 from common_utils.language_utils import (
     get_prompt_language,
-    set_prompt_language,
     is_supported_language,
     SUPPORTED_LANGUAGES,
     DEFAULT_LANGUAGE,
@@ -235,104 +234,14 @@ def get_prompt_by(prompt_name: str, language: Optional[str] = None) -> Any:
 
 
 # ============================================================================
-# 向后兼容 - 保持现有的直接导入方式（使用默认语言）
+# 导出常量
 # ============================================================================
 
-# 获取默认语言
-_default_language = get_prompt_language()
-
-# 根据默认语言设置动态导入提示词
-if _default_language == "zh":
-    # ===== 中文提示词 =====
-    # 对话相关
-    from memory_layer.prompts.zh.conv_prompts import CONV_BOUNDARY_DETECTION_PROMPT, CONV_SUMMARY_PROMPT
-    
-    # Episode 相关
-    from memory_layer.prompts.zh.episode_mem_prompts import (
-        EPISODE_GENERATION_PROMPT,
-        GROUP_EPISODE_GENERATION_PROMPT,
-        DEFAULT_CUSTOM_INSTRUCTIONS,
-    )
-    
-    # Profile 相关
-    from memory_layer.prompts.zh.profile_mem_prompts import CONVERSATION_PROFILE_EXTRACTION_PROMPT
-    from memory_layer.prompts.zh.profile_mem_part1_prompts import CONVERSATION_PROFILE_PART1_EXTRACTION_PROMPT
-    from memory_layer.prompts.zh.profile_mem_part2_prompts import CONVERSATION_PROFILE_PART2_EXTRACTION_PROMPT
-    from memory_layer.prompts.zh.profile_mem_part3_prompts import CONVERSATION_PROFILE_PART3_EXTRACTION_PROMPT
-    from memory_layer.prompts.zh.profile_mem_evidence_completion_prompt import (
-        CONVERSATION_PROFILE_EVIDENCE_COMPLETION_PROMPT,
-    )
-    
-    # Group Profile 相关
-    from memory_layer.prompts.zh.group_profile_prompts import (
-        CONTENT_ANALYSIS_PROMPT,
-        BEHAVIOR_ANALYSIS_PROMPT,
-    )
-    
-    # Foresight 相关
-    from memory_layer.prompts.zh.foresight_prompts import (
-        get_group_foresight_generation_prompt,
-        get_foresight_generation_prompt,
-    )
-    
-    # Event Log 相关
-    from memory_layer.prompts.zh.event_log_prompts import EVENT_LOG_PROMPT
-    
-else:
-    # ===== 英文提示词（默认） =====
-    # 对话相关
-    from memory_layer.prompts.en.conv_prompts import CONV_BOUNDARY_DETECTION_PROMPT, CONV_SUMMARY_PROMPT
-    
-    # Episode 相关
-    from memory_layer.prompts.en.episode_mem_prompts import (
-        EPISODE_GENERATION_PROMPT,
-        GROUP_EPISODE_GENERATION_PROMPT,
-        DEFAULT_CUSTOM_INSTRUCTIONS,
-    )
-    
-    # Profile 相关
-    from memory_layer.prompts.en.profile_mem_prompts import CONVERSATION_PROFILE_EXTRACTION_PROMPT
-    from memory_layer.prompts.en.profile_mem_part1_prompts import CONVERSATION_PROFILE_PART1_EXTRACTION_PROMPT
-    from memory_layer.prompts.en.profile_mem_part2_prompts import CONVERSATION_PROFILE_PART2_EXTRACTION_PROMPT
-    from memory_layer.prompts.en.profile_mem_part3_prompts import CONVERSATION_PROFILE_PART3_EXTRACTION_PROMPT
-    from memory_layer.prompts.en.profile_mem_evidence_completion_prompt import (
-        CONVERSATION_PROFILE_EVIDENCE_COMPLETION_PROMPT,
-    )
-    
-    # Group Profile 相关
-    from memory_layer.prompts.en.group_profile_prompts import (
-        CONTENT_ANALYSIS_PROMPT,
-        BEHAVIOR_ANALYSIS_PROMPT,
-    )
-    
-    # Foresight 相关
-    from memory_layer.prompts.en.foresight_prompts import (
-        get_group_foresight_generation_prompt,
-        get_foresight_generation_prompt,
-    )
-    
-    # Event Log 相关
-    from memory_layer.prompts.en.event_log_prompts import EVENT_LOG_PROMPT
-
-
-# ============================================================================
-# 导出函数 - 兼容旧 API
-# ============================================================================
+# 当前语言信息
+CURRENT_LANGUAGE = get_prompt_language()
+MEMORY_LANGUAGE = CURRENT_LANGUAGE
 
 
 def get_current_language() -> str:
-    """获取当前语言（兼容旧 API）"""
+    """获取当前语言"""
     return get_prompt_language()
-
-
-def set_language(language: str) -> None:
-    """设置语言（兼容旧 API，需要重启应用才能生效）"""
-    if set_prompt_language(language):
-        print(f"Language set to: {language}")
-    else:
-        print(f"Unsupported language: {language}. Supported: {SUPPORTED_LANGUAGES}")
-
-
-# 导出当前语言信息（兼容旧 API）
-CURRENT_LANGUAGE = get_prompt_language()
-MEMORY_LANGUAGE = CURRENT_LANGUAGE

@@ -132,8 +132,9 @@ class GroupProfileLLMHandler:
 
         Only passes topics-related info to LLM, excluding evidences (but keeping confidence).
         """
-        # 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-        from memory_layer.prompts import CONTENT_ANALYSIS_PROMPT
+        # 通过 PromptManager 获取提示词（根据 MEMORY_LANGUAGE 环境变量自动选择）
+        from memory_layer.prompts import get_prompt_by
+        CONTENT_ANALYSIS_PROMPT = get_prompt_by("CONTENT_ANALYSIS_PROMPT")
 
         # 构建给 LLM 的 existing_profile，只包含需要的字段，不包含 evidences
         existing_profile_for_llm = {
@@ -187,8 +188,9 @@ class GroupProfileLLMHandler:
 
         Only passes roles info to LLM, excluding evidences (but keeping confidence).
         """
-        # 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-        from memory_layer.prompts import BEHAVIOR_ANALYSIS_PROMPT
+        # 通过 PromptManager 获取提示词（根据 MEMORY_LANGUAGE 环境变量自动选择）
+        from memory_layer.prompts import get_prompt_by
+        BEHAVIOR_ANALYSIS_PROMPT = get_prompt_by("BEHAVIOR_ANALYSIS_PROMPT")
 
         # 构建给 LLM 的 existing_profile，只包含 roles，不包含 evidences
         existing_profile_for_llm = {

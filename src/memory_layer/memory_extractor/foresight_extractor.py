@@ -7,11 +7,7 @@ import json
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
-# 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from memory_layer.prompts import (
-    get_group_foresight_generation_prompt,
-    get_foresight_generation_prompt,
-)
+from memory_layer.prompts import get_prompt_by
 from memory_layer.llm.llm_provider import LLMProvider
 from memory_layer.memory_extractor.base_memory_extractor import MemoryExtractor, MemoryExtractRequest
 from api_specs.memory_types import MemoryType, MemCell, Memory, ForesightItem
@@ -91,7 +87,8 @@ class ForesightExtractor(MemoryExtractor):
                 else:
                     logger.info(f"🎯 为MemCell生成前瞻联想: {memcell.subject}，重试次数: {retry}/5")
 
-                # 构建提示词
+                # 构建提示词（通过 PromptManager 获取函数类型的 prompt）
+                get_group_foresight_generation_prompt = get_prompt_by("get_group_foresight_generation_prompt")
                 prompt = get_group_foresight_generation_prompt(
                     memcell_summary=memcell.summary,
                     memcell_episode=memcell.episode or "",
@@ -160,8 +157,9 @@ class ForesightExtractor(MemoryExtractor):
                 else:
                     logger.info(f"🎯 为EpisodeMemory生成前瞻联想: {episode.subject}，重试次数: {retry+1}/5")
 
-                # 构建提示词
+                # 构建提示词（通过 PromptManager 获取函数类型的 prompt）
                 # 直接使用episode的user_id
+                get_foresight_generation_prompt = get_prompt_by("get_foresight_generation_prompt")
                 prompt = get_foresight_generation_prompt(
                     episode_memory=episode.summary or "",
                     episode_content=episode.episode or "",

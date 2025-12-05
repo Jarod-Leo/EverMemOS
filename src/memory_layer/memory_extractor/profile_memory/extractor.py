@@ -13,12 +13,7 @@ from core.observation.logger import get_logger
 
 from memory_layer.llm.llm_provider import LLMProvider
 
-# 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from memory_layer.prompts import (
-    CONVERSATION_PROFILE_PART1_EXTRACTION_PROMPT,
-    CONVERSATION_PROFILE_PART2_EXTRACTION_PROMPT,
-    CONVERSATION_PROFILE_PART3_EXTRACTION_PROMPT,
-)
+from memory_layer.prompts import get_prompt_by
 from api_specs.memory_types import MemoryType, MemCell
 from memory_layer.memory_extractor.profile_memory.conversation import (
     annotate_relative_dates,
@@ -171,16 +166,16 @@ class ProfileMemoryExtractor(MemoryExtractor):
                     if len(base_memory_obj) > 1:
                         participants_base_memory_map[mem.user_id] = base_memory_obj
 
-        # Build两个提示词
+        # Build两个提示词（通过 PromptManager 获取）
         prompt_part1 = build_profile_prompt(
-            CONVERSATION_PROFILE_PART1_EXTRACTION_PROMPT,
+            get_prompt_by("CONVERSATION_PROFILE_PART1_EXTRACTION_PROMPT"),
             all_conversation_text,
             participants_profile_list_no_evidences,
             participants_base_memory_map,
             request,
         )
         prompt_part2 = build_profile_prompt(
-            CONVERSATION_PROFILE_PART2_EXTRACTION_PROMPT,
+            get_prompt_by("CONVERSATION_PROFILE_PART2_EXTRACTION_PROMPT"),
             all_conversation_text,
             participants_profile_list_no_evidences,
             participants_base_memory_map,
@@ -712,8 +707,8 @@ class ProfileMemoryExtractor(MemoryExtractor):
                 f"({user_info['message_count']} messages)"
             )
 
-            # Build Part3 prompt
-            prompt = CONVERSATION_PROFILE_PART3_EXTRACTION_PROMPT
+            # Build Part3 prompt（通过 PromptManager 获取）
+            prompt = get_prompt_by("CONVERSATION_PROFILE_PART3_EXTRACTION_PROMPT")
             prompt += f"\n\n**Existing User Profile:**\n"
             prompt += f"User ID: {user_id}\n"
             prompt += f"User Name: {user_info['user_name']}\n"

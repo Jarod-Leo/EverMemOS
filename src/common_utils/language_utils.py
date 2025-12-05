@@ -16,6 +16,7 @@ def get_prompt_language() -> str:
     """获取当前的 Prompt 语言设置
 
     从环境变量 MEMORY_LANGUAGE 获取语言设置，如果未设置或不支持则返回默认值 "en"。
+    语言设置应在启动时通过环境变量配置，运行时不可修改。
 
     Returns:
         当前的语言设置，默认为 "en"
@@ -24,24 +25,6 @@ def get_prompt_language() -> str:
     if language not in SUPPORTED_LANGUAGES:
         return DEFAULT_LANGUAGE
     return language
-
-
-def set_prompt_language(language: str) -> bool:
-    """设置 Prompt 语言
-
-    设置环境变量 MEMORY_LANGUAGE，影响后续所有 Prompt 的语言选择。
-
-    Args:
-        language: 语言代码，支持 "en" 和 "zh"
-
-    Returns:
-        设置是否成功
-    """
-    language = language.lower()
-    if language not in SUPPORTED_LANGUAGES:
-        return False
-    os.environ["MEMORY_LANGUAGE"] = language
-    return True
 
 
 def is_supported_language(language: str) -> bool:

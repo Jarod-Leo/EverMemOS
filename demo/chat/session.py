@@ -13,7 +13,7 @@ from demo.config import ChatModeConfig, LLMConfig, ScenarioType
 from demo.utils import query_memcells_by_group_and_time
 from demo.ui import I18nTexts
 from memory_layer.llm.llm_provider import LLMProvider
-from common_utils.datetime_utils import get_now_with_timezone
+from common_utils.datetime_utils import get_now_with_timezone, to_iso_format
 
 
 class ChatSession:
@@ -364,20 +364,11 @@ class ChatSession:
         if memories:
             memory_lines = []
             for i, mem in enumerate(memories, start=1):
+                # 使用 datetime_utils 统一处理时间格式
                 raw_timestamp = mem.get("timestamp", "")
-                if hasattr(raw_timestamp, 'isoformat'):
-                    # datetime 对象
-                    timestamp = raw_timestamp.isoformat()[:10]
-                elif isinstance(raw_timestamp, (int, float)) and raw_timestamp > 0:
-                    # Unix 时间戳
-                    from datetime import datetime
-                    try:
-                        timestamp = datetime.fromtimestamp(raw_timestamp).isoformat()[:10]
-                    except (ValueError, OSError):
-                        timestamp = ""
-                else:
-                    # 字符串或其他
-                    timestamp = str(raw_timestamp)[:10] if raw_timestamp else ""
+                iso_timestamp = to_iso_format(raw_timestamp)
+                # 只取日期部分（前10个字符，如 2025-12-04）
+                timestamp = iso_timestamp[:10] if iso_timestamp else ""
                 subject = mem.get("subject", "")
                 summary = mem.get("summary", "")
                 episode = mem.get("episode", "")

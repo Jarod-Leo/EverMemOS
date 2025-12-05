@@ -34,24 +34,35 @@ def to_timezone(dt: datetime.datetime, tz: ZoneInfo = None) -> datetime.datetime
     return dt.astimezone(tz)
 
 
-def to_iso_format(time_value: datetime.datetime | int | float | str | None) -> str | None:
+def to_iso_format(
+    time_value: datetime.datetime | int | float | str | None,
+    allow_none: bool = True,
+) -> str | None:
     """
     将时间值转换为ISO格式字符串（带时区）
     支持多种输入格式：
     - datetime对象
     - int/float: Unix时间戳（自动识别秒级或毫秒级）
     - str: 已经是ISO格式的字符串则直接返回
-    - None: 返回None
+    - None: 根据 allow_none 参数决定是否允许
 
     Args:
         time_value: 时间值，支持datetime、时间戳、字符串或None
+        allow_none: 是否允许 None 值，默认为 True。
+                    当为 True 时，传入 None 返回 None；
+                    当为 False 时，传入 None 会抛出 ValueError。
 
     Returns:
         ISO格式的日期时间字符串（如 2025-09-16T20:20:06.517301+08:00），或None
+
+    Raises:
+        ValueError: 当 allow_none=False 且 time_value 为 None 时
     """
     # 处理None
     if time_value is None:
-        return None
+        if allow_none:
+            return None
+        raise ValueError("time_value cannot be None when allow_none=False")
 
     # 处理字符串类型 - 如果已经是字符串，直接返回（假设已经是ISO格式）
     if isinstance(time_value, str):

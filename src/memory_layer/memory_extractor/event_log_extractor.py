@@ -11,9 +11,7 @@ from datetime import datetime
 import json
 import re
 
-# 使用动态语言提示词导入（根据 MEMORY_LANGUAGE 环境变量自动选择）
-from memory_layer.prompts import EVENT_LOG_PROMPT
-
+from memory_layer.prompts import get_prompt_by
 from memory_layer.llm.llm_provider import LLMProvider
 from common_utils.datetime_utils import get_now_with_timezone
 
@@ -66,8 +64,8 @@ class EventLogExtractor:
         """
         self.llm_provider = llm_provider
         
-        # 使用根据 MEMORY_LANGUAGE 环境变量自动选择的提示词
-        self.event_log_prompt = EVENT_LOG_PROMPT
+        # 使用 PromptManager 获取提示词（根据 MEMORY_LANGUAGE 环境变量自动选择）
+        self.event_log_prompt = get_prompt_by("EVENT_LOG_PROMPT")
 
     def _parse_timestamp(self, timestamp) -> datetime:
         """
