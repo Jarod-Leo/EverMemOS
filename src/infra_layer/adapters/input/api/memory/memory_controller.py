@@ -335,7 +335,6 @@ class MemoryController(BaseController):
             },
         },
     )
-    @timeout_to_background()
     async def fetch_memories(self, fastapi_request: FastAPIRequest) -> Dict[str, Any]:
         """
         获取用户记忆数据
@@ -495,7 +494,6 @@ class MemoryController(BaseController):
             },
         },
     )
-    @timeout_to_background()
     async def search_memories(self, fastapi_request: FastAPIRequest) -> Dict[str, Any]:
         """
         检索相关记忆数据
@@ -567,7 +565,6 @@ class MemoryController(BaseController):
         - 如果只需要更新部分字段，请使用 PATCH /conversation-meta 接口
         """,
     )
-    @timeout_to_background()
     async def save_conversation_meta(
         self, fastapi_request: FastAPIRequest
     ) -> Dict[str, Any]:
@@ -808,7 +805,6 @@ class MemoryController(BaseController):
             },
         },
     )
-    @timeout_to_background()
     async def patch_conversation_meta(
         self, fastapi_request: FastAPIRequest
     ) -> Dict[str, Any]:
