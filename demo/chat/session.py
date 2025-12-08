@@ -125,7 +125,7 @@ class ChatSession:
             error_msg = (
                 f"\n❌ Cannot connect to API server: {self.api_base_url}\n\n"
                 f"Please start V3 API server first:\n"
-                f"  uv run python src/bootstrap.py src/run.py --port 8001\n\n"
+                f"  uv run python src/run.py --port 8001\n\n"
                 f"Then run the chat application in another terminal.\n"
             )
             raise ConnectionError(error_msg) from e

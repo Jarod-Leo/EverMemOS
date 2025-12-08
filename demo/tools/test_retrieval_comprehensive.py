@@ -8,7 +8,7 @@ Test all retrieval mode combinations:
 
 Usage:
     # Ensure API server is started
-    uv run python src/bootstrap.py src/run.py --port 8001
+    uv run python src/run.py --port 8001
     
     # Run test in another terminal
     uv run python src/bootstrap.py demo/tools/test_retrieval_comprehensive.py

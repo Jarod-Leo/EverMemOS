@@ -81,7 +81,7 @@ await memory.search("What is the user's favorite team?")
 
 ```bash
 # 终端 1：启动 API 服务器
-uv run python src/bootstrap.py src/run.py --port 8001
+uv run python src/run.py --port 8001
 
 # 终端 2：运行简单演示
 uv run python src/bootstrap.py demo/simple_demo.py
@@ -106,7 +106,7 @@ uv run python src/bootstrap.py demo/simple_demo.py
 - 服务器端自动提取 MemCell、生成情节和画像
 - 所有数据存储到数据库（MongoDB、Elasticsearch、Milvus）
 
-**运行前提**：必须先启动 API 服务器 (`uv run python src/bootstrap.py src/run.py --port 8001`)
+**运行前提**：必须先启动 API 服务器 (`uv run python src/run.py --port 8001`)
 
 **依赖**: HTTP API、`clear_all_data` 工具
 
@@ -159,7 +159,7 @@ uv run python src/bootstrap.py demo/simple_demo.py
 
 ```bash
 # 终端 1：启动 API 服务器（必需）
-uv run python src/bootstrap.py src/run.py --port 8001
+uv run python src/run.py --port 8001
 
 # 终端 2：运行简单演示
 uv run python src/bootstrap.py demo/simple_demo.py
@@ -183,7 +183,7 @@ uv run python src/bootstrap.py demo/simple_demo.py
 
 ```bash
 # 启动 API 服务器（如果还没运行）
-uv run python src/bootstrap.py src/run.py --port 8001
+uv run python src/run.py --port 8001
 
 # 在另一个终端运行提取脚本
 uv run python src/bootstrap.py demo/extract_memory.py
@@ -331,7 +331,7 @@ MONGODB_URI=mongodb://admin:memsys123@localhost:27017
 **A**: API 服务端的 `MEMORY_LANGUAGE` 与数据文件语言不匹配。在 `.env` 中设置正确的语言（`en` 或 `zh`），然后**重启服务器**并重新提取。
 
 ### Q: 找不到 API 服务器连接？
-**A**: 确保先启动 API 服务器：`uv run python src/bootstrap.py src/run.py --port 8001`
+**A**: 确保先启动 API 服务器：`uv run python src/run.py --port 8001`
 
 ### Q: extract_memory.py 如何使用自定义数据？
 **A**: 编辑脚本，修改以下变量：

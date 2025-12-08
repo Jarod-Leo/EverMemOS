@@ -7,7 +7,7 @@ Follows the same logic as test_retrieval_comprehensive.py:
 
 Usage:
     # Ensure API server is started
-    uv run python src/bootstrap.py src/run.py --port 8001
+    uv run python src/run.py --port 8001
     
     # Run test in another terminal
     uv run python src/bootstrap.py demo/tools/test_agentic_retrieve.py

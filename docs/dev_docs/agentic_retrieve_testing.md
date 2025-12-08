@@ -69,7 +69,7 @@ POST /api/v3/agentic/retrieve_agentic
 
 ```bash
 # Start the service
-uv run python src/bootstrap.py src/run.py --port 8001
+uv run python src/run.py --port 8001
 
 # Run tests (in another terminal)
 uv run python src/bootstrap.py demo/test_v3_retrieve_http.py
