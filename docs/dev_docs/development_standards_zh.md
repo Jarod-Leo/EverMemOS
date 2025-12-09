@@ -42,8 +42,10 @@ pre-commit install           # 安装代码检查钩子
 **🔀 分支合并统一处理**  
 `long/xxx` 合并到 `dev`、`dev` 切出 `release`、`release` 合并回 `dev` 需由开发或运维负责人统一处理
 
-**🔍 Code Review 要求**  
-增加数据迁移脚本、依赖三方包新增或者升降级、基建框架代码改动、合并 发布release分支 必须走 MR 流程
+**📤 MR 规范**
+- 代码提交尽可能小，小步快跑，不建议一次性提交过多代码
+- 每次提交都要保证能正常运行，不提交开发中或有错误的代码
+- 数据迁移脚本、依赖变更、基建代码改动、合并 release 分支必须走 Code Review
 
 **💾 数据迁移规范**  
 涉及数据修复或 Schema 迁移的新功能，尽早与研发、运维讨论方案可行性和实施时间安排
@@ -51,18 +53,33 @@ pre-commit install           # 安装代码检查钩子
 **🏛️ 数据访问规范**  
 所有数据库、搜索引擎等外部存储的读写操作必须收敛到 infra 层的 repository 方法中，禁止在业务层直接调用外部仓储
 
+**🎯 最小化变更**  
+实现需求时最小化代码变更，避免大规模重构，优先增量式开发。不要过度设计，保持简洁、高效、易维护
+
+**💬 注释规范**  
+总是加足够的注释（函数级 + 步骤级），确保 reviewer 能快速理解代码意图
+
+**📖 API 文档同步**  
+修改 API 接口时必须同步更新 API 文档注释、schema 定义文件和自动生成的文档文件
+
+**📄 文档规范**  
+使用 markdown 格式，放 docs 目录下。小问题不需要生成文档，只需在代码中添加注释
+
 ### 📖 快速导航
 
 - 不知道怎么装依赖？→ [依赖管理规范](#依赖管理规范)
 - 需要数据库/中间件配置？→ [开发环境配置规范](#开发环境配置规范)
-- 提交前总报错？→ [代码风格规范](#代码风格规范)  
+- 提交前总报错？→ [代码风格规范](#代码风格规范)
+- 代码注释怎么写？→ [注释规范](#注释规范)
+- 改了 API 后需要做什么？→ [API 规范同步](#api-规范同步)
 - 不确定能不能用线程？→ [异步编程规范](#异步编程规范)
 - 循环中能做数据库查询吗？→ [禁止在 for 循环中进行 I/O 操作](#7-禁止在-for-循环中进行-io-操作-)
 - 时间字段怎么处理？→ [时区意识规范](#时区意识规范)
 - 数据库查询应该写在哪？→ [数据访问规范](#数据访问规范)
 - 导入路径报错？→ [导入规范](#导入规范)
+- 模块介绍文件怎么命名？→ [模块介绍文件命名规范](#模块介绍文件命名规范)
 - 不知道切什么分支？→ [分支管理规范](#分支管理规范)
-- 需要提 MR？→ [Code Review 流程](#code-review-流程)
+- 如何提交代码/需要提 MR？→ [MR 规范](#-mr-规范)
 - 需要数据迁移？→ [数据迁移与 Schema 变更流程](#数据迁移与-schema-变更流程)
 
 ---
@@ -73,6 +90,9 @@ pre-commit install           # 安装代码检查钩子
 - [依赖管理规范](#依赖管理规范)
 - [开发环境配置规范](#开发环境配置规范)
 - [代码风格规范](#代码风格规范)
+- [注释规范](#注释规范)
+- [API 规范同步](#api-规范同步)
+- [文档规范](#文档规范)
 - [异步编程规范](#异步编程规范)
 - [时区意识规范](#时区意识规范)
 - [数据访问规范](#数据访问规范)
@@ -80,7 +100,9 @@ pre-commit install           # 安装代码检查钩子
   - [PYTHONPATH 管理](#pythonpath-管理)
   - [优先使用绝对导入](#优先使用绝对导入)
   - [__init__.py 使用规范](#__init__py-使用规范)
+- [模块介绍文件命名规范](#模块介绍文件命名规范)
 - [分支管理规范](#分支管理规范)
+- [MR 规范](#-mr-规范)
 - [Code Review 流程](#code-review-流程)
   - [数据迁移与 Schema 变更流程](#数据迁移与-schema-变更流程)
 
@@ -310,6 +332,279 @@ pre-commit run --all-files
 # 对暂存的文件运行检查
 pre-commit run
 ```
+
+---
+
+## 💬 注释规范
+
+### 核心原则
+
+**💡 重要提示：总是加足够的注释**
+
+良好的注释能够帮助团队成员快速理解代码意图，提高代码可维护性和 Code Review 效率。
+
+### 注释要求
+
+#### 1. 函数级注释（Google 风格 Docstring）
+
+每个函数/方法都应该有清晰的 **Google 风格文档字符串**，说明：
+
+- **功能描述**：函数做什么
+- **参数说明**：每个参数的类型和用途
+- **返回值**：返回值的类型和含义
+- **异常说明**：可能抛出的异常（如适用）
+
+```python
+# ✅ 推荐：完整的函数级注释
+async def fetch_user_memories(
+    user_id: str,
+    limit: int = 100,
+    include_archived: bool = False
+) -> list[Memory]:
+    """
+    获取用户的记忆列表。
+    
+    Args:
+        user_id: 用户唯一标识
+        limit: 返回记忆的最大数量，默认 100
+        include_archived: 是否包含已归档的记忆，默认不包含
+    
+    Returns:
+        用户的记忆列表，按创建时间倒序排列
+    
+    Raises:
+        UserNotFoundError: 当用户不存在时抛出
+    """
+    ...
+```
+
+#### 2. 步骤级注释
+
+在复杂的业务逻辑中，应该在关键步骤添加注释，说明每一步的目的：
+
+```python
+# ✅ 推荐：关键步骤添加注释
+async def process_memory_extraction(raw_data: dict) -> Memory:
+    # 1. 验证输入数据的完整性
+    validated_data = validate_input(raw_data)
+    
+    # 2. 提取关键信息（人物、事件、时间等）
+    extracted_info = await extract_key_information(validated_data)
+    
+    # 3. 生成向量嵌入用于后续检索
+    embedding = await generate_embedding(extracted_info.content)
+    
+    # 4. 构建记忆对象并持久化
+    memory = Memory(
+        content=extracted_info.content,
+        embedding=embedding,
+        metadata=extracted_info.metadata
+    )
+    
+    return memory
+```
+
+#### 3. 复杂逻辑说明
+
+对于复杂的算法、业务规则或非直观的代码，应该添加详细的解释：
+
+```python
+# ✅ 推荐：解释复杂的业务规则
+def calculate_memory_score(memory: Memory, query: str) -> float:
+    """计算记忆与查询的相关性得分"""
+    # 基础相似度得分（余弦相似度）
+    base_score = cosine_similarity(memory.embedding, query_embedding)
+    
+    # 时间衰减因子：越新的记忆权重越高
+    # 使用指数衰减，半衰期为 30 天
+    days_old = (now - memory.created_at).days
+    time_decay = math.exp(-0.693 * days_old / 30)
+    
+    # 重要性加权：用户标记为重要的记忆得分提升 50%
+    importance_boost = 1.5 if memory.is_important else 1.0
+    
+    return base_score * time_decay * importance_boost
+```
+
+### 注释风格
+
+- 使用中文或英文均可，但同一项目/模块内保持一致
+- 注释应该简洁明了，避免废话
+- 避免注释过时，代码修改时同步更新注释
+- 不要注释显而易见的代码
+
+```python
+# ❌ 不推荐：废话注释
+i = i + 1  # i 加 1
+
+# ✅ 推荐：解释"为什么"而不是"做什么"
+i = i + 1  # 跳过标题行，从数据行开始处理
+```
+
+### 检查清单
+
+在提交代码前，确认以下事项：
+
+- [ ] 所有公开函数/方法都有文档字符串
+- [ ] 复杂的业务逻辑有步骤级注释
+- [ ] 非直观的代码有解释性注释
+- [ ] 注释与代码保持同步，没有过时的注释
+- [ ] reviewer 能够快速理解代码意图
+
+---
+
+## 📖 API 规范同步
+
+### 核心原则
+
+**💡 重要提示：修改 API 接口时必须同步更新 API 文档**
+
+API 文档是前后端协作、服务集成的重要依据。文档与实际 API 不一致会导致集成问题和调试困难。
+
+### 同步要求
+
+当修改 API 接口时，必须完成以下同步操作：
+
+#### 1. 更新 API 文档注释
+
+确保代码中的 API 文档注释与实际行为一致：
+
+```python
+# ✅ 推荐：保持文档注释与实际 API 一致
+from fastapi import APIRouter, Query
+
+router = APIRouter()
+
+@router.get("/memories/{memory_id}")
+async def get_memory(
+    memory_id: str,
+    include_embedding: bool = Query(False, description="是否返回向量嵌入")
+) -> MemoryResponse:
+    """
+    获取指定记忆的详细信息。
+    
+    - **memory_id**: 记忆的唯一标识
+    - **include_embedding**: 是否在响应中包含向量嵌入数据
+    
+    Returns:
+        MemoryResponse: 记忆详情，包含内容、元数据等信息
+    
+    Raises:
+        404: 记忆不存在
+        403: 无权访问该记忆
+    """
+    ...
+```
+
+#### 2. 更新 Schema 定义文件
+
+如果 API 的请求/响应结构发生变化，同步更新相关的 schema 定义：
+
+```python
+# 更新 Pydantic model
+class MemoryResponse(BaseModel):
+    """记忆响应模型"""
+    id: str = Field(..., description="记忆唯一标识")
+    content: str = Field(..., description="记忆内容")
+    created_at: datetime = Field(..., description="创建时间")
+    # 新增字段时，添加清晰的描述
+    embedding: list[float] | None = Field(None, description="向量嵌入，仅在请求时返回")
+```
+
+#### 3. 重新生成 API 文档文件
+
+如果项目使用自动生成的 API 文档（如 OpenAPI/Swagger），确保重新生成：
+
+```bash
+# 示例：重新生成 OpenAPI 文档
+python scripts/generate_openapi.py
+
+# 或者确保 FastAPI 自动生成的文档是最新的
+# 访问 /docs 或 /redoc 验证
+```
+
+#### 4. 通知相关方
+
+如果是重大 API 变更，通知前端和其他依赖服务的开发者。
+
+### 检查清单
+
+在提交 API 变更前，确认以下事项：
+
+- [ ] API 文档注释已更新，与实际行为一致
+- [ ] Schema 定义文件（Pydantic model 等）已更新
+- [ ] 自动生成的 API 文档文件已重新生成
+- [ ] 前端和其他服务能够基于最新的 API 规范进行开发和集成
+- [ ] 如有破坏性变更，已通知相关方
+
+---
+
+## 📄 文档规范
+
+### 核心原则
+
+**💡 重要提示：不要过度生成文档**
+
+文档是代码的重要补充，但过度生成文档反而会增加维护负担。遵循"必要且充分"的原则。
+
+### 何时需要文档
+
+| 场景 | 是否需要文档 | 说明 |
+|------|-------------|------|
+| 小 bug 修复 | ❌ 不需要 | 在代码注释中说明即可 |
+| 小功能优化 | ❌ 不需要 | 在 commit message 和代码注释中说明 |
+| 新增 API 接口 | ⚠️ 视情况 | API 文档注释必须有，独立文档视复杂度 |
+| 新增模块/组件 | ✅ 需要 | 编写模块介绍文档 |
+| 大规模重构 | ✅ 需要 | 记录重构原因、方案和影响 |
+| 架构设计变更 | ✅ 需要 | 记录设计决策和架构说明 |
+| 复杂业务流程 | ✅ 需要 | 编写流程说明文档 |
+
+### 文档格式要求
+
+- **格式**：使用 Markdown (`.md`) 格式
+- **语法**：遵循标准 Markdown 语法
+
+### 文档存放位置
+
+```
+项目根目录/
+├── docs/                        # 文档根目录
+│   ├── api_docs/               # API 文档
+│   │   └── memory_api.md
+│   ├── dev_docs/               # 开发文档
+│   │   └── development_standards_zh.md
+│   ├── architecture/           # 架构文档
+│   │   └── system_design.md
+│   └── guides/                 # 使用指南
+│       └── getting_started.md
+```
+
+### 命名规则
+
+- **格式**：`{分类}/{文件名}.md`
+- **示例**：
+  - `api_docs/document_slice_api.md`
+  - `dev_docs/coding_standards.md`
+  - `architecture/memory_system_design.md`
+
+### 文档内容建议
+
+一份好的文档通常包含：
+
+1. **标题和简介**：说明文档的目的
+2. **背景/动机**：为什么需要这个功能/变更
+3. **核心内容**：详细说明
+4. **示例**：代码示例或使用示例
+5. **相关文档**：链接到其他相关文档
+
+### 检查清单
+
+编写文档前，先问自己：
+
+- [ ] 这个变更是否复杂到需要独立文档？
+- [ ] 代码注释是否已经足够说明问题？
+- [ ] 文档放在了正确的目录下？
+- [ ] 文档命名是否清晰易懂？
 
 ---
 
@@ -1554,6 +1849,88 @@ from core.memory.processor import process_memory
 
 ---
 
+## 📁 模块介绍文件命名规范
+
+### 核心原则
+
+**💡 重要提示：使用 `introduction.md` 作为模块介绍文件**
+
+在 `src/core/` 目录下的各个子模块中，统一使用小写的 `introduction.md` 作为模块介绍文件，而不是全大写的 `README.md`。
+
+### 为什么不用 README.md？
+
+- `README.md` 可能是自动生成的或历史遗留的文件
+- 使用 `introduction.md` 可以明确区分人工编写的模块介绍和自动生成的内容
+- 保持命名的一致性和可预测性
+
+### 命名示例
+
+```
+src/core/
+├── di/
+│   └── introduction.md              # DI 模块介绍
+├── addons/
+│   └── introduction.md              # Addons 模块介绍
+├── component/
+│   └── introduction.md              # Component 模块介绍
+└── memory/
+    └── introduction.md              # Memory 模块介绍
+```
+
+### introduction.md 内容建议
+
+一份好的模块介绍文件应包含：
+
+1. **模块简介**：模块的功能和定位
+2. **目录结构**：模块内的文件组织
+3. **核心功能**：主要类、函数和接口说明
+4. **使用示例**：基本的使用代码示例
+5. **相关文档**：链接到其他相关文档
+
+### 示例模板
+
+```markdown
+# 模块名称
+
+## 简介
+
+简要描述模块的功能和用途。
+
+## 目录结构
+
+```
+module_name/
+├── __init__.py
+├── introduction.md
+├── core.py          # 核心逻辑
+├── types.py         # 类型定义
+└── utils.py         # 工具函数
+```
+
+## 核心功能
+
+### 主要类/函数
+
+- `ClassName`: 功能描述
+- `function_name()`: 功能描述
+
+## 使用示例
+
+```python
+from module_name.core import ClassName
+
+instance = ClassName()
+result = instance.do_something()
+```
+
+## 相关文档
+
+- [相关文档1](./path/to/doc1.md)
+- [相关文档2](./path/to/doc2.md)
+```
+
+---
+
 ## 🌿 分支管理规范
 
 ### 分支类型说明
@@ -1737,60 +2114,149 @@ git push origin your-branch
 
 ---
 
+## 📤 MR 规范
+
+### 核心原则
+
+#### 1. 小步快跑，减少单次提交量
+
+**💡 重要提示：代码提交尽可能少，小步快跑，不建议一次性提交过多代码**
+
+每次 MR 应该保持小而聚焦，便于审查和追踪问题。
+
+**为什么要小步快跑？**
+
+- **易于 Review**：小的变更更容易理解和审查，Review 质量更高
+- **快速反馈**：小批量提交能更快获得反馈，及时调整方向
+- **问题定位**：出现问题时更容易定位到具体的提交
+- **降低风险**：大量代码一次性合并的风险远高于多次小量合并
+- **减少冲突**：频繁小批量合并减少代码冲突的概率和复杂度
+
+**推荐做法**：
+
+```bash
+# ✅ 推荐：按功能点或逻辑单元拆分提交
+git commit -m "feat: 添加用户认证接口"
+git commit -m "feat: 添加用户认证中间件"
+git commit -m "test: 添加用户认证单元测试"
+
+# ❌ 不推荐：一次性提交大量不相关的改动
+git commit -m "feat: 完成用户模块所有功能"  # 包含数十个文件的改动
+```
+
+**提交拆分建议**：
+
+| 提交类型 | 建议规模 | 说明 |
+|---------|---------|------|
+| **功能开发** | 50-200 行 | 一个独立的功能点或逻辑单元 |
+| **Bug 修复** | 尽可能小 | 只包含修复必要的代码 |
+| **重构** | 100-300 行 | 一次只做一种类型的重构 |
+| **文档** | 不限 | 文档更新可以相对灵活 |
+
+#### 2. 保证每次提交可运行
+
+**💡 重要提示：尽可能不要提交错误或者开发中的代码，每次提交都能保证正常运行**
+
+每次提交到共享分支（如 `dev`、`release`）的代码都应该是可运行的完整状态。
+
+**为什么要保证提交质量？**
+
+- **持续集成**：确保 CI/CD 流水线不会因为未完成的代码而失败
+- **团队协作**：其他开发者拉取代码后能正常运行和开发
+- **快速回滚**：任何一个提交都是可以安全回滚到的稳定点
+- **代码追溯**：`git bisect` 等工具需要每个提交都是可运行的
+
+**推荐做法**：
+
+```bash
+# ✅ 推荐：提交前确保代码可运行
+# 1. 运行测试
+pytest tests/unit/
+# 2. 运行 pre-commit 检查
+pre-commit run --all-files
+# 3. 确认无语法错误和运行时错误
+# 4. 提交代码
+git commit -m "feat: your feature description"
+
+# ❌ 不推荐：提交未完成或有错误的代码
+git commit -m "WIP: 开发中..."  # 不应该提交到共享分支
+git commit -m "fix: 临时修复，待完善"  # 应该完善后再提交
+```
+
+**提交前检查清单**：
+
+- [ ] 代码通过 pre-commit 检查（格式化、lint 等）
+- [ ] 无明显的语法错误或运行时错误
+- [ ] 相关的单元测试通过
+- [ ] 功能已完成，不是半成品
+- [ ] 不包含调试代码（如 `print` 调试语句、注释掉的代码块）
+- [ ] 不包含敏感信息（密码、密钥、Token 等）
+
+**特殊情况处理**：
+
+如果确实需要保存开发中的代码，建议：
+
+1. **使用个人功能分支**：在 `feature/your-name/xxx` 分支上开发，完成后再合并
+2. **使用 `git stash`**：临时保存未完成的改动
+   ```bash
+   git stash save "WIP: 开发中的功能"
+   # 之后恢复
+   git stash pop
+   ```
+3. **本地多次小提交，合并时 squash**：
+   ```bash
+   git rebase -i HEAD~3  # 合并最近3个提交为一个
+   ```
+
+#### 3. 必须 Code Review 的文件
+
+**💡 重要提示：以下类型的文件变更必须经过 Code Review**
+
+为保证代码质量和系统稳定性，以下文件或目录的变更必须创建 MR 并指定审查者：
+
+##### 数据相关文件
+
+| 文件/目录 | 说明 | 风险等级 |
+|-----------|------|----------|
+| `migrations/` | 数据库迁移脚本 | 🔴 高 |
+| `devops_scripts/data_fix/` | 数据修复脚本 | 🔴 高 |
+| 任何涉及 `insert`/`update`/`delete` 的批量脚本 | 批量数据变更 | 🔴 高 |
+
+##### 依赖相关文件
+
+| 文件/目录 | 说明 | 风险等级 |
+|-----------|------|----------|
+| `pyproject.toml` | 依赖配置变更 | 🟠 中高 |
+| `uv.lock` | 依赖锁文件变更 | 🟠 中高 |
+
+##### 基础设施相关文件
+
+| 文件/目录 | 说明 | 风险等级 |
+|-----------|------|----------|
+| `infra_layer/` | 基础设施层代码 | 🟠 中高 |
+| `bootstrap.py` | 应用启动入口 | 🔴 高 |
+| `application_startup.py` | 应用启动流程 | 🔴 高 |
+| `base_app.py` | 基础应用类 | 🔴 高 |
+| 依赖注入容器配置 | DI 容器配置 | 🟠 中高 |
+
+##### 分支合并操作
+
+| 操作类型 | 说明 | 风险等级 |
+|---------|------|----------|
+| 合并到 `release/xxx` | 发版分支合并 | 🟠 中高 |
+| 合并到 `master` | 主分支合并 | 🔴 高 |
+| `long/xxx` → `dev` | 长期分支合并 | 🟠 中高 |
+
+**审查要点**：
+
+- **数据脚本**：检查 SQL/查询的正确性、数据备份方案、回滚计划
+- **依赖变更**：检查版本兼容性、安全漏洞、是否有替代方案
+- **基建变更**：检查向后兼容性、性能影响、错误处理
+- **分支合并**：检查代码完整性、测试覆盖、冲突解决
+
+---
+
 ## 🔍 Code Review 流程
-
-### Code Review 推荐场景
-
-以下情况建议经过 Code Review（创建 Merge Request/Pull Request）：
-
-#### 1. 数据相关变更
-
-- 💾 **数据库 Migration 脚本**
-  - `migrations/` 目录下的新增或修改
-  - 数据结构变更（字段增删改、索引变更）
-  
-- 💾 **数据修复脚本**
-  - `devops_scripts/data_fix/` 目录下的脚本
-  - 涉及批量数据修改的脚本
-  - ElasticSearch 数据同步脚本
-
-#### 2. 依赖包变更
-
-- 📦 **依赖包的增加**
-  - 新增生产依赖或开发依赖
-  - 说明添加原因和用途
-  
-- 📦 **依赖包的删除**
-  - 确认无其他模块依赖
-  - 说明删除原因
-  
-- 📦 **依赖包的版本升级**
-  - 重大版本升级（如 1.x → 2.x）
-  - 涉及 API 变更的升级
-  - 提供升级影响评估
-
-相关变更会影响：
-- `pyproject.toml`
-- `uv.lock`
-
-#### 3. 基础设施变更
-
-- 🏗️ **基建新增或变更**
-  - 新增中间件、数据库连接池等基础组件
-  - 修改基础设施配置（数据库、Redis、Kafka 等）
-  - 新增或修改 `infra_layer/` 下的适配器
-  
-- 🏗️ **应用启动加载流程**
-  - 修改 `bootstrap.py`
-  - 修改 `application_startup.py`
-  - 修改 `base_app.py`
-  - 修改依赖注入容器配置
-
-#### 4. 重要分支合并
-
-- 🔀 合并到 `release/xxx` 分支
-- 🔀 合并到 `master` 分支（hotfix）
-- 🔀 `long/xxx` 长期分支合并到 `dev`
 
 ### 数据迁移与 Schema 变更流程
 
@@ -1938,13 +2404,7 @@ git push origin your-branch
    - [ ] 无明显的性能问题
    - [ ] 无安全隐患
 
-3. **指定审查者**
-   - 在 Merge Request 中指定审查者（见文档末尾联系人）
-   - 明确标注变更类型：
-     - 📊 数据变更（Migration/数据修复脚本）
-     - 📦 依赖变更（pyproject.toml/uv.lock）
-     - 🏗️ 基建变更（infra_layer/启动流程）
-     - 🔀 重要分支合并（release/master/long）
+**注意**：项目已配置 Code Owner 机制，审查者会根据变更文件自动分配，无需手动指定。
 
 #### 审查者工作
 
@@ -1971,12 +2431,9 @@ git push origin your-branch
 - [ ] Bugfix (Bug 修复)
 - [ ] Hotfix (紧急修复)
 - [ ] Refactor (重构)
-- [ ] 📊 Migration (数据迁移) - 建议 Code Review
-- [ ] 📦 Dependency (依赖变更) - 建议 Code Review
-- [ ] 🏗️ Infrastructure (基建变更) - 建议 Code Review
-
-## 审查者
-<!-- 指定审查者，见文档末尾联系人信息 -->
+- [ ] 📊 Migration (数据迁移)
+- [ ] 📦 Dependency (依赖变更)
+- [ ] 🏗️ Infrastructure (基建变更)
 
 ## 变更说明
 <!-- 简要描述本次变更的内容和原因 -->
@@ -2000,18 +2457,6 @@ git push origin your-branch
 <!-- 如有必要，提供截图或关键日志 -->
 ```
 
-### 哪些变更建议 Code Review？
-
-以下情况建议创建 MR 并指定审查者：
-
-- 💾 **数据相关变更**（Migration、数据修复脚本）
-- 📦 **依赖包的增删改**（pyproject.toml、uv.lock）
-- 🏗️ **基础设施变更**（infra_layer、启动流程）
-- 🔀 **合并到 release/xxx 或 master 分支**
-- 🔀 **long/xxx 长期分支合并到 dev**
-
-**小功能/小 bug 合并到 dev** 可视情况决定是否需要 MR。
-
 ### 如何提交 Merge Request？
 
 ```bash
@@ -2021,8 +2466,8 @@ git push origin your-branch-name
 # 2. 在 Git 平台（GitLab/GitHub/Gitee）创建 MR/PR
 #    - 源分支：your-branch-name
 #    - 目标分支：dev/release/master
-#    - 审查者：见文档末尾联系人
 #    - 使用上面的 MR 描述模板填写详细信息
+#    - Code Owner 会自动分配审查者
 
 # 3. 等待审查，根据反馈意见修改代码
 git add .
@@ -2030,19 +2475,17 @@ git commit -m "fix: 根据 code review 意见修改 xxx"
 git push origin your-branch-name
 
 # 4. 审查通过后合并
-#    - 由审查者确认后合并
-#    - 或自行合并后通知相关人员
 ```
 
 ---
 
 ## 📚 相关文档
 
-- [项目入门指南](./getting_started.md)
-- [开发指南](./development_guide.md)
-- [依赖管理指南](./project_deps_manage.md)
-- [Bootstrap 使用说明](./bootstrap_usage.md)
-- [MongoDB 迁移指南](./mongodb_migration_guide.md)
+- [项目入门指南](./getting_started_zh.md)
+- [开发指南](./development_guide_zh.md)
+- [依赖管理指南](./project_deps_manage_zh.md)
+- [Bootstrap 使用说明](./bootstrap_usage_zh.md)
+- [MongoDB 迁移指南](./mongodb_migration_guide_zh.md)
 
 ---
 

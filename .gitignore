@@ -207,7 +207,8 @@ src/memory_layer/memory_extractor/profile_memory_extractor keep llm merge.py
 AGENTS.mk
 docs/api_docs/profile_extraction_fields.md
 .claude/
-.cursor/
+.cursor/*
+!.cursor/rules/
 
 #tmp_data
 demo/memcell_outputs/

@@ -42,46 +42,68 @@ Not recommended to write any code in `__init__.py`, keep it empty
 **🔀 Unified Branch Merge Handling**  
 Merging `long/xxx` to `dev`, cutting `release` from `dev`, merging `release` back to `dev` needs to be handled uniformly by development or operations lead
 
-**🔍 Code Review Requirements**  
-Adding data migration scripts, adding/upgrading/downgrading third-party dependencies, infrastructure framework code changes, merging release branches must go through MR process
+**📤 MR Standards**
+- Keep code commits small, iterate quickly, avoid submitting too much code at once
+- Each commit should be runnable, do not submit work-in-progress or broken code
+- Data migration scripts, dependency changes, infrastructure code changes, merging release branches must go through Code Review
 
 **💾 Data Migration Standards**  
 For new features involving data fixes or Schema migration, discuss feasibility and implementation timing with development and operations as early as possible
 
 **🏛️ Data Access Standards**  
-All database, search engine and other external storage read/write operations must be converged to infra layer repository methods. Direct calls to external repositories in upper layers are prohibited
+All database, search engine and other external storage read/write operations must be converged to infra layer repository methods. Direct calls in business layer are prohibited
+
+**🎯 Minimal Changes**  
+Minimize code changes when implementing requirements, avoid large-scale refactoring, prioritize incremental development. Do not over-engineer, keep it simple, efficient, and maintainable
+
+**💬 Comment Standards**  
+Always add sufficient comments (function-level + step-level), ensure reviewers can quickly understand code intent
+
+**📖 API Documentation Sync**  
+When modifying API interfaces, must synchronize updates to API documentation comments, schema definition files, and auto-generated documentation files
+
+**📄 Documentation Standards**  
+Use markdown format, place in docs directory. Small issues don't need documentation, just add comments in code
 
 ### 📖 Quick Navigation
 
-- Don't know how to install dependencies? → [Dependency Management Standards](#dependency-management-standards)
-- Need database/middleware configuration? → [Development Environment Configuration Standards](#development-environment-configuration-standards)
-- Always getting errors before commit? → [Code Style Standards](#code-style-standards)
-- Not sure if you can use threads? → [Async Programming Standards](#async-programming-standards)
+- Don't know how to install dependencies? → [Dependency Management Standards](#-dependency-management-standards)
+- Need database/middleware configuration? → [Development Environment Configuration Standards](#-development-environment-configuration-standards)
+- Always getting errors before commit? → [Code Style Standards](#-code-style-standards)
+- How to write code comments? → [Comment Standards](#-comment-standards)
+- What to do after changing API? → [API Specification Sync](#-api-specification-sync)
+- Not sure if you can use threads? → [Async Programming Standards](#️-async-programming-standards)
 - Can I do database queries in loops? → [Prohibit I/O Operations in for Loops](#7-prohibit-io-operations-in-for-loops-)
-- How to handle time fields? → [Timezone Awareness Standards](#timezone-awareness-standards)
-- Where should database queries be written? → [Data Access Standards](#data-access-standards)
-- Import path errors? → [Import Standards](#import-standards)
-- Don't know which branch to use? → [Branch Management Standards](#branch-management-standards)
-- Need to submit MR? → [Code Review Process](#code-review-process)
+- How to handle time fields? → [Timezone Awareness Standards](#-timezone-awareness-standards)
+- Where should database queries be written? → [Data Access Standards](#️-data-access-standards)
+- Import path errors? → [Import Standards](#-import-standards)
+- How to name module introduction files? → [Module Introduction File Naming](#-module-introduction-file-naming)
+- Don't know which branch to use? → [Branch Management Standards](#-branch-management-standards)
+- How to submit code/Need to submit MR? → [MR Standards](#-mr-standards)
 - Need data migration? → [Data Migration and Schema Change Process](#data-migration-and-schema-change-process)
 
 ---
 
 ## 📋 Table of Contents
 
-- [TL;DR (Quick Start)](#tldr-quick-start)
-- [Dependency Management Standards](#dependency-management-standards)
-- [Development Environment Configuration Standards](#development-environment-configuration-standards)
-- [Code Style Standards](#code-style-standards)
-- [Async Programming Standards](#async-programming-standards)
-- [Timezone Awareness Standards](#timezone-awareness-standards)
-- [Data Access Standards](#data-access-standards)
-- [Import Standards](#import-standards)
+- [TL;DR (Core Principles)](#-tldr-core-principles)
+- [Dependency Management Standards](#-dependency-management-standards)
+- [Development Environment Configuration Standards](#-development-environment-configuration-standards)
+- [Code Style Standards](#-code-style-standards)
+- [Comment Standards](#-comment-standards)
+- [API Specification Sync](#-api-specification-sync)
+- [Documentation Standards](#-documentation-standards)
+- [Async Programming Standards](#️-async-programming-standards)
+- [Timezone Awareness Standards](#-timezone-awareness-standards)
+- [Data Access Standards](#️-data-access-standards)
+- [Import Standards](#-import-standards)
   - [PYTHONPATH Management](#pythonpath-management)
   - [Prefer Absolute Imports](#prefer-absolute-imports)
   - [__init__.py Usage Standards](#__init__py-usage-standards)
-- [Branch Management Standards](#branch-management-standards)
-- [Code Review Process](#code-review-process)
+- [Module Introduction File Naming](#-module-introduction-file-naming)
+- [Branch Management Standards](#-branch-management-standards)
+- [MR Standards](#-mr-standards)
+- [Code Review Process](#-code-review-process)
   - [Data Migration and Schema Change Process](#data-migration-and-schema-change-process)
 
 ---
@@ -92,7 +114,7 @@ All database, search engine and other external storage read/write operations mus
 
 **💡 Important Note: Recommended to use uv for dependency management**
 
-The project uses `uv` as the dependency management tool. It's recommended to avoid using `pip install` directly to install packages for the following reasons:
+The project uses `uv` as the dependency management tool. It's recommended to avoid using `pip install` directly for the following reasons:
 
 - Dependency versions may be inconsistent
 - `uv.lock` file cannot be automatically updated
@@ -106,7 +128,6 @@ The project uses `uv` as the dependency management tool. It's recommended to avo
 ```bash
 # Sync all dependencies (first install or after updates)
 uv sync --group dev-full
-
 ```
 
 #### 2. Add New Dependencies
@@ -140,7 +161,7 @@ uv add <package-name> --upgrade
 
 ### Related Documentation
 
-For detailed dependency management guide, please refer to: [project_deps_manage.md](./project_deps_manage.md)
+For detailed dependency management guide, refer to: [project_deps_manage.md](./project_deps_manage.md)
 
 ---
 
@@ -148,11 +169,11 @@ For detailed dependency management guide, please refer to: [project_deps_manage.
 
 ### Environment Configuration Description
 
-The project depends on various databases and middleware. To ensure consistency and security of the development environment, these configurations are uniformly managed and distributed by the operations team.
+The project depends on various databases and middleware. To ensure consistency and security of development environments, these configurations are uniformly managed and distributed by the operations team.
 
-#### Configuration Items Involved
+#### Configuration Items
 
-Development environment typically requires the following configurations:
+Development environment typically needs the following configurations:
 
 **Database Configuration**
 - MongoDB connection information
@@ -169,32 +190,32 @@ Development environment typically requires the following configurations:
 - Object storage configuration
 - Other external service credentials
 
-### How to Obtain Configuration
+### How to Get Configuration
 
-#### 1. New Team Members
+#### 1. New Employee Onboarding
 
-For developers newly joining the project, please follow this process to obtain configuration:
+New developers joining the project, please follow this process to get configurations:
 
-1. **Contact Operations Lead** (see contact information at end of document)
-2. **Explain Requirements**:
+1. **Contact operations lead** (see contact information at the end of document)
+2. **State your needs**:
    - Your name and role
-   - Required environment (development environment/test environment)
-   - Specific services you need access to
-3. **Receive Configuration**: Operations lead will provide configuration files or environment variables
-4. **Local Configuration**: Put configuration information in the project's `config.json` or `.env` file (note: these files are in `.gitignore` and won't be committed to the repository)
+   - Environment needed (development/testing)
+   - Specific services to access
+3. **Receive configuration**: Operations lead will provide configuration files or environment variables
+4. **Local configuration**: Place configuration information in project's `config.json` or `.env` file (Note: these files are in `.gitignore`, won't be committed to repository)
 
-#### 2. Configuration File Locations
+#### 2. Configuration File Location
 
 ```bash
 # Configuration files in project root (do not commit to git)
 config.json          # Main configuration file
 .env                 # Environment variable configuration
-env.template         # Configuration template (can refer to but need to fill in real values)
+env.template         # Configuration template (reference, need to fill in real values)
 ```
 
 #### 3. Environment Variable Examples
 
-Refer to the `env.template` file, your `.env` file typically contains the following types of configuration:
+Reference `env.template` file, your `.env` file typically contains the following types of configuration:
 
 ```bash
 # MongoDB
@@ -214,20 +235,20 @@ ES_HOST=...
 ES_PORT=...
 ```
 
-### Configuration Management Precautions
+### Configuration Management Notes
 
 #### ⚠️ Security Standards
 
-1. **Prohibit Committing Sensitive Configuration**
+1. **Prohibit committing sensitive configuration**
    - All configuration files containing passwords, keys, tokens must not be committed to git
-   - Check if `.gitignore` includes configuration files before committing
+   - Check `.gitignore` includes configuration files before committing
    - Using pre-commit hook can help detect sensitive information
 
-2. **Configuration File Permissions**
-   - Local configuration files should be set with appropriate permissions (readable only by current user)
-   - Do not paste configuration content directly in public places (such as chat logs, documents)
+2. **Configuration file permissions**
+   - Local configuration files should have appropriate permissions (only current user readable)
+   - Do not paste configuration content in public places (like chat records, documents)
 
-3. **Configuration Update Notification**
+3. **Configuration update notifications**
    - If configuration is updated, operations team will notify relevant developers
    - Update local configuration promptly after receiving notification
 
@@ -240,37 +261,20 @@ If you need to:
 
 **Recommended process**:
 
-1. **Discuss with Development Lead**: Confirm necessity and impact scope of configuration changes
-2. **Contact Operations Lead**: Explain configuration requirements and reasons for change
-3. **Update Configuration Template**: Update `env.template` and related documentation
-4. **Team Notification**: Notify all developers to sync and update local configuration
+1. **Discuss with development lead**: Confirm necessity and impact scope of configuration changes
+2. **Contact operations lead**: Explain configuration needs and reasons for changes
+3. **Update configuration template**: Update `env.template` and related documentation
+4. **Team notification**: Notify all developers to sync update local configuration
 
-#### 📝 Configuration Problem Troubleshooting
-
-**Common Issues**:
-
-1. **Connection Failed**
-   - Check network connection (are you on company network or VPN)
-   - Confirm if configuration information is correct
-   - Contact operations lead to confirm service status
-
-2. **Insufficient Permissions**
-   - Confirm if account has been authorized
-   - Contact operations lead to apply for appropriate permissions
-
-3. **Configuration Expired**
-   - Regularly check if configuration needs updating
-   - Pay attention to configuration change information in team notifications
-
-### Different Environment Descriptions
+### Different Environment Description
 
 | Environment | Purpose | Configuration Source | Notes |
-|------|------|----------|------|
-| **Development Environment** | Local development and debugging | Provided by operations | Usually connects to development database, data can be tested freely |
-| **Test Environment** | Integration testing and functional testing | Automatic deployment configuration | Connects to test database, data reset regularly |
-| **Production Environment** | Officially running service | Strictly controlled by operations | Only operations and authorized personnel can access |
+|-------------|---------|---------------------|-------|
+| **Development** | Local development and debugging | Provided by operations | Usually connects to development database, data can be freely tested |
+| **Testing** | Integration and functional testing | Auto-deployed configuration | Connects to test database, data periodically reset |
+| **Production** | Live running services | Strictly controlled by operations | Only operations and authorized personnel can access |
 
-**Note**: Developers typically only need development environment configuration. Test environment and production environment configurations are managed by CI/CD and operations team.
+**Note**: Developers usually only need development environment configuration. Testing and production environment configurations are managed by CI/CD and operations team.
 
 ---
 
@@ -278,7 +282,7 @@ If you need to:
 
 ### Pre-commit Hook Configuration
 
-The project uses `pre-commit` to unify code style. It's recommended to install the pre-commit hook after cloning the project for the first time.
+The project uses `pre-commit` to unify code style. It's recommended to install pre-commit hook after first cloning the project.
 
 #### Installation Steps
 
@@ -290,26 +294,299 @@ uv sync --dev
 pre-commit install
 ```
 
-#### Purpose
+#### Functions
 
-Pre-commit hook automatically executes the following checks before each commit:
+Pre-commit hook will automatically execute the following checks before each commit:
 
-- **Code Formatting**: Use black/ruff to format Python code
-- **Import Sorting**: Use isort to sort import statements
-- **Code Checking**: Use ruff/flake8 for code quality checks
-- **Type Checking**: Use pyright/mypy for type checking
-- **YAML/JSON Format**: Check configuration file format
-- **Trailing Whitespace**: Remove trailing spaces at end of files
+- **Code formatting**: Format Python code using black/ruff
+- **Import sorting**: Sort import statements using isort
+- **Code checking**: Code quality check using ruff/flake8
+- **Type checking**: Type check using pyright/mypy
+- **YAML/JSON format**: Check configuration file format
+- **Trailing whitespace**: Remove extra whitespace at end of files
 
-#### Manual Checks
+#### Manual Check
 
 ```bash
-# Run checks on all files
+# Run check on all files
 pre-commit run --all-files
 
-# Run checks on staged files
+# Run check on staged files
 pre-commit run
 ```
+
+---
+
+## 💬 Comment Standards
+
+### Core Principle
+
+**💡 Important Note: Always add sufficient comments**
+
+Good comments help team members quickly understand code intent, improving maintainability and Code Review efficiency.
+
+### Comment Requirements
+
+#### 1. Function-level Comments (Google-style Docstring)
+
+Every function/method should have a clear **Google-style docstring** explaining:
+
+- **Description**: What the function does
+- **Args**: Type and purpose of each parameter
+- **Returns**: Return value type and meaning
+- **Raises**: Exceptions that may be thrown (if applicable)
+
+```python
+# ✅ Recommended: Complete function-level comments
+async def fetch_user_memories(
+    user_id: str,
+    limit: int = 100,
+    include_archived: bool = False
+) -> list[Memory]:
+    """
+    Fetch user's memory list.
+    
+    Args:
+        user_id: User unique identifier
+        limit: Maximum number of memories to return, default 100
+        include_archived: Whether to include archived memories, default False
+    
+    Returns:
+        User's memory list, sorted by creation time in descending order
+    
+    Raises:
+        UserNotFoundError: When user does not exist
+    """
+    ...
+```
+
+#### 2. Step-level Comments
+
+In complex business logic, add comments at key steps to explain the purpose of each step:
+
+```python
+# ✅ Recommended: Add comments at key steps
+async def process_memory_extraction(raw_data: dict) -> Memory:
+    # 1. Validate input data integrity
+    validated_data = validate_input(raw_data)
+    
+    # 2. Extract key information (people, events, time, etc.)
+    extracted_info = await extract_key_information(validated_data)
+    
+    # 3. Generate vector embedding for subsequent retrieval
+    embedding = await generate_embedding(extracted_info.content)
+    
+    # 4. Build memory object and persist
+    memory = Memory(
+        content=extracted_info.content,
+        embedding=embedding,
+        metadata=extracted_info.metadata
+    )
+    
+    return memory
+```
+
+#### 3. Complex Logic Explanation
+
+For complex algorithms, business rules, or non-intuitive code, add detailed explanations:
+
+```python
+# ✅ Recommended: Explain complex business rules
+def calculate_memory_score(memory: Memory, query: str) -> float:
+    """Calculate relevance score between memory and query"""
+    # Base similarity score (cosine similarity)
+    base_score = cosine_similarity(memory.embedding, query_embedding)
+    
+    # Time decay factor: newer memories have higher weight
+    # Using exponential decay with half-life of 30 days
+    days_old = (now - memory.created_at).days
+    time_decay = math.exp(-0.693 * days_old / 30)
+    
+    # Importance weighting: memories marked as important get 50% boost
+    importance_boost = 1.5 if memory.is_important else 1.0
+    
+    return base_score * time_decay * importance_boost
+```
+
+### Comment Style
+
+- Use Chinese or English consistently within the same project/module
+- Comments should be concise and clear, avoid redundancy
+- Keep comments updated when code changes
+- Don't comment obvious code
+
+```python
+# ❌ Not recommended: Redundant comment
+i = i + 1  # increment i by 1
+
+# ✅ Recommended: Explain "why" not "what"
+i = i + 1  # Skip header row, start processing from data rows
+```
+
+### Checklist
+
+Before submitting code, confirm:
+
+- [ ] All public functions/methods have docstrings
+- [ ] Complex business logic has step-level comments
+- [ ] Non-intuitive code has explanatory comments
+- [ ] Comments are in sync with code, no outdated comments
+- [ ] Reviewers can quickly understand code intent
+
+---
+
+## 📖 API Specification Sync
+
+### Core Principle
+
+**💡 Important Note: Must synchronize API documentation when modifying API interfaces**
+
+API documentation is the key basis for frontend-backend collaboration and service integration. Inconsistency between documentation and actual API leads to integration issues and debugging difficulties.
+
+### Sync Requirements
+
+When modifying API interfaces, must complete the following sync operations:
+
+#### 1. Update API Documentation Comments
+
+Ensure code API documentation comments match actual behavior:
+
+```python
+# ✅ Recommended: Keep documentation comments consistent with actual API
+from fastapi import APIRouter, Query
+
+router = APIRouter()
+
+@router.get("/memories/{memory_id}")
+async def get_memory(
+    memory_id: str,
+    include_embedding: bool = Query(False, description="Whether to return vector embedding")
+) -> MemoryResponse:
+    """
+    Get detailed information of specified memory.
+    
+    - **memory_id**: Memory unique identifier
+    - **include_embedding**: Whether to include vector embedding data in response
+    
+    Returns:
+        MemoryResponse: Memory details including content, metadata, etc.
+    
+    Raises:
+        404: Memory not found
+        403: No permission to access this memory
+    """
+    ...
+```
+
+#### 2. Update Schema Definition Files
+
+If API request/response structure changes, update related schema definitions:
+
+```python
+# Update Pydantic model
+class MemoryResponse(BaseModel):
+    """Memory response model"""
+    id: str = Field(..., description="Memory unique identifier")
+    content: str = Field(..., description="Memory content")
+    created_at: datetime = Field(..., description="Creation time")
+    # When adding new fields, add clear descriptions
+    embedding: list[float] | None = Field(None, description="Vector embedding, only returned on request")
+```
+
+#### 3. Regenerate API Documentation Files
+
+If the project uses auto-generated API documentation (e.g., OpenAPI/Swagger), ensure regeneration:
+
+```bash
+# Example: Regenerate OpenAPI documentation
+python scripts/generate_openapi.py
+
+# Or ensure FastAPI auto-generated docs are up to date
+# Visit /docs or /redoc to verify
+```
+
+#### 4. Notify Stakeholders
+
+If it's a major API change, notify frontend and other dependent service developers.
+
+### Checklist
+
+Before submitting API changes, confirm:
+
+- [ ] API documentation comments updated and consistent with actual behavior
+- [ ] Schema definition files (Pydantic models, etc.) updated
+- [ ] Auto-generated API documentation files regenerated
+- [ ] Frontend and other services can develop based on latest API specification
+- [ ] If breaking changes, stakeholders have been notified
+
+---
+
+## 📄 Documentation Standards
+
+### Core Principle
+
+**💡 Important Note: Do not over-generate documentation**
+
+Documentation is an important supplement to code, but excessive documentation increases maintenance burden. Follow the "necessary and sufficient" principle.
+
+### When Documentation is Needed
+
+| Scenario | Need Documentation | Notes |
+|----------|-------------------|-------|
+| Small bug fix | ❌ No | Just explain in code comments |
+| Small feature optimization | ❌ No | Explain in commit message and code comments |
+| New API endpoint | ⚠️ Depends | API doc comments required, separate doc depends on complexity |
+| New module/component | ✅ Yes | Write module introduction documentation |
+| Large-scale refactoring | ✅ Yes | Document reasons, approach and impact |
+| Architecture design changes | ✅ Yes | Document design decisions and architecture description |
+| Complex business processes | ✅ Yes | Write process documentation |
+
+### Documentation Format Requirements
+
+- **Format**: Use Markdown (`.md`) format
+- **Syntax**: Follow standard Markdown syntax
+
+### Documentation Location
+
+```
+project_root/
+├── docs/                        # Documentation root
+│   ├── api_docs/               # API documentation
+│   │   └── memory_api.md
+│   ├── dev_docs/               # Development documentation
+│   │   └── development_standards.md
+│   ├── architecture/           # Architecture documentation
+│   │   └── system_design.md
+│   └── guides/                 # User guides
+│       └── getting_started.md
+```
+
+### Naming Convention
+
+- **Format**: `{category}/{filename}.md`
+- **Examples**:
+  - `api_docs/document_slice_api.md`
+  - `dev_docs/coding_standards.md`
+  - `architecture/memory_system_design.md`
+
+### Documentation Content Suggestions
+
+A good document typically contains:
+
+1. **Title and introduction**: Explain the purpose of the document
+2. **Background/motivation**: Why this feature/change is needed
+3. **Core content**: Detailed explanation
+4. **Examples**: Code examples or usage examples
+5. **Related documentation**: Links to other related documents
+
+### Checklist
+
+Before writing documentation, ask yourself:
+
+- [ ] Is this change complex enough to need separate documentation?
+- [ ] Are code comments already sufficient to explain the issue?
+- [ ] Is the documentation in the correct directory?
+- [ ] Is the documentation name clear and understandable?
 
 ---
 
@@ -322,14 +599,14 @@ The project adopts **full async architecture**, based on the following principle
 #### 1. Single Event Loop Principle
 
 - **The entire application uses one main Event Loop**
-- Avoid creating new Event Loop in code (`asyncio.new_event_loop()`)
-- Avoid using `asyncio.run()` to start new loop in async context
+- Avoid creating new Event Loops in code (`asyncio.new_event_loop()`)
+- Avoid using `asyncio.run()` to start new loops in async context
 
 #### 2. About Using Threads and Processes ⚠️
 
-**💡 Important Note: Use multithreading and multiprocessing carefully**
+**💡 Important Note: Be cautious with multithreading and multiprocessing**
 
-The project is based on single Event Loop full async architecture. It's recommended to avoid the following operations:
+The project is based on single Event Loop full async architecture, avoid the following operations:
 
 ```python
 # ❌ Not recommended: Creating threads
@@ -337,7 +614,7 @@ import threading
 thread = threading.Thread(target=some_function)
 thread.start()
 
-# ❌ Not recommended: Using thread pool (unless special circumstances)
+# ❌ Not recommended: Using thread pool (unless special cases)
 from concurrent.futures import ThreadPoolExecutor
 executor = ThreadPoolExecutor()
 
@@ -352,25 +629,25 @@ executor = ProcessPoolExecutor()
 ```
 
 **Why not recommended?**
-- May break single Event Loop architecture and cause concurrency issues
-- Thread safety issues are complex and prone to race conditions
-- Resource management is more difficult and may cause resource leaks
-- May affect normal working of async context (contextvars)
-- Debugging difficulty increases, stack tracing is more complex
+- May break single Event Loop architecture, causing concurrency issues
+- Thread safety issues are complex, easy to introduce race conditions
+- Resource management is difficult, may cause resource leaks
+- May affect async context (contextvars) normal operation
+- Debugging becomes harder, stack traces are complex
 
-**Special Scenario Handling**
+**Special Case Handling**
 
-If you really need to use threads or processes (e.g., CPU-intensive computing, calling third-party libraries that don't support async), it's recommended to:
+If you really need to use threads or processes (e.g., CPU-intensive computation, calling third-party libraries that don't support async), it's recommended to:
 
-1. **Discuss solution with development lead in advance**
-2. Explain why async solution cannot meet requirements
-3. Provide resource management solution (ensure threads/processes are properly closed)
+1. **Discuss with development lead in advance**
+2. Explain why async solution cannot meet the needs
+3. Provide resource management plan (ensure threads/processes are properly closed)
 4. Go through Code Review
 
-**Few allowed scenario examples**:
+**Allowed scenario examples**:
 
 ```python
-# ✅ Special scenario: Calling sync library that doesn't support async (after discussion)
+# ✅ Special case: Calling sync libraries that don't support async (after discussion)
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -465,16 +742,16 @@ async def fetch_multiple_users(user_ids: list[str]):
 
 **💡 Important Note: Avoid serial I/O operations in loops**
 
-Performing database access, API calls, and other I/O operations in for loops will cause serious performance issues because each operation needs to wait for the previous one to complete, unable to fully utilize async concurrency advantages.
+Doing database access, API calls and other I/O operations in for loops causes serious performance issues, because each operation needs to wait for the previous one to complete, unable to take advantage of async concurrency.
 
-**❌ Wrong Examples: I/O Operations in Loops**
+**❌ Wrong example: I/O operations in loops**
 
 ```python
 # Wrong: Serial database access in loop
 async def get_users_info(user_ids: list[str]):
     results = []
     for user_id in user_ids:
-        # Each loop waits for database return, extremely poor performance
+        # Each loop iteration waits for database return, very poor performance
         user = await db.users.find_one({"_id": user_id})
         results.append(user)
     return results
@@ -483,7 +760,7 @@ async def get_users_info(user_ids: list[str]):
 async def fetch_user_profiles(user_ids: list[str]):
     profiles = []
     for user_id in user_ids:
-        # Each loop waits for API response, wasting time
+        # Each loop iteration waits for API response, wasting time
         response = await api_client.get(f"/users/{user_id}")
         profiles.append(response.json())
     return profiles
@@ -495,7 +772,7 @@ async def save_messages(messages: list[dict]):
         await db.messages.insert_one(msg)
 ```
 
-**✅ Correct Examples: Using Concurrent or Batch Operations**
+**✅ Correct example: Using concurrent or batch operations**
 
 ```python
 # Correct: Using asyncio.gather for concurrent execution
@@ -515,9 +792,9 @@ async def save_messages(messages: list[dict]):
     if messages:
         await db.messages.insert_many(messages)
 
-# Correct: Using database's in query instead of loop queries
+# Correct: Using database's in query instead of loop query
 async def get_users_info(user_ids: list[str]):
-    # Get all data in one query
+    # Single query to get all data
     cursor = db.users.find({"_id": {"$in": user_ids}})
     results = await cursor.to_list(length=None)
     return results
@@ -527,19 +804,19 @@ async def get_users_info(user_ids: list[str]):
 
 Assuming 100 users, each database query takes 10ms:
 - ❌ Loop serial query: 100 × 10ms = 1000ms (1 second)
-- ✅ Concurrent query: ~10ms (almost complete simultaneously)
+- ✅ Concurrent query: ~10ms (almost simultaneous completion)
 - ✅ Batch query: ~10ms (single query)
 
-**Exceptional Cases**
+**Exception Cases**
 
-In rare cases you may need I/O in loops, but must meet the following conditions:
+In rare cases you may need to do I/O in loops, but must meet the following conditions:
 
-1. **Subsequent operations depend on previous results**: Must wait for previous operation to complete before proceeding
-2. **Rate limiting requirements**: Need to control concurrency to avoid pressure on external services
-3. **Already approved by development lead**
+1. **Subsequent operations depend on previous result**: Must wait for previous operation to complete before next one
+2. **Rate limiting needs**: Need to control concurrency to avoid pressure on external services
+3. **Approved by development lead**
 
 ```python
-# Allowed: Serial operations with dependencies (need comment explaining reason)
+# Allowed: Serial operations with dependencies (comment explaining reason)
 async def process_workflow(steps: list[dict]):
     result = None
     for step in steps:
@@ -547,9 +824,9 @@ async def process_workflow(steps: list[dict]):
         result = await execute_step(step, previous_result=result)
     return result
 
-# Allowed: Using semaphore to control concurrency (need comment explaining reason)
+# Allowed: Using semaphore to control concurrency (comment explaining reason)
 async def fetch_with_rate_limit(urls: list[str]):
-    # Limit max 5 concurrent requests to avoid triggering external API rate limit
+    # Limit max 5 concurrent requests to avoid triggering external API rate limiting
     semaphore = asyncio.Semaphore(5)
     
     async def fetch_one(url: str):
@@ -564,20 +841,20 @@ async def fetch_with_rate_limit(urls: list[str]):
 
 ## 🕐 Timezone Awareness Standards
 
-### Core Principles
+### Core Principle
 
-**💡 Important Note: All time fields must have timezone awareness**
+**💡 Important Note: All time fields must be timezone-aware**
 
-When handling date and time data, must ensure all time fields carry timezone information to avoid data errors and business issues caused by ambiguous timezones.
+When handling date and time data, must ensure all time fields carry timezone information to avoid data errors and business issues caused by unclear timezone.
 
-**⚠️ Prohibit directly using standard methods from `datetime` module**
+**⚠️ Prohibit direct use of `datetime` module standard methods**
 
-The project uniformly uses utility functions from `common_utils/datetime_utils.py` to handle time. The following methods are prohibited:
+The project uniformly uses utility functions from `common_utils/datetime_utils.py` for time handling, prohibit direct use of:
 - ❌ `datetime.datetime.now()`
 - ❌ `datetime.datetime.utcnow()`
 - ❌ `datetime.datetime.today()`
 
-Must use utility functions provided by the project:
+Must use project-provided utility functions:
 - ✅ `get_now_with_timezone()` - Get current time (with timezone)
 - ✅ `from_timestamp()` - Convert from timestamp
 - ✅ `from_iso_format()` - Convert from ISO format string
@@ -588,15 +865,15 @@ Must use utility functions provided by the project:
 
 #### 1. Input Data Timezone Requirements
 
-All time fields entering the system must meet the following requirements:
+All time fields entering the system must meet:
 
-- **Must carry timezone information**: All datetime type fields must be timezone-aware
-- **Default timezone**: If input data doesn't have timezone information, uniformly treat it as **Asia/Shanghai (Shanghai timezone, UTC+8)**
-- **Storage format**: When storing in database, recommend uniformly converting to UTC timezone, but must retain timezone information
+- **Must carry timezone info**: All datetime type fields must be timezone-aware
+- **Default timezone**: If input data doesn't have timezone info, treat it as **Asia/Shanghai (Shanghai timezone, UTC+8)**
+- **Storage format**: When storing in database, recommend converting to UTC timezone uniformly, but must preserve timezone info
 
 #### 2. Python Implementation Standards
 
-**✅ Correct Examples: Using Project Utility Functions**
+**✅ Correct example: Using project utility functions**
 
 ```python
 from common_utils.datetime_utils import (
@@ -612,15 +889,15 @@ from common_utils.datetime_utils import (
 now = get_now_with_timezone()
 # Returns: datetime.datetime(2025, 9, 16, 20, 17, 41, tzinfo=zoneinfo.ZoneInfo(key='Asia/Shanghai'))
 
-# Method 2: Convert from timestamp (automatically recognize second/millisecond level, automatically add timezone)
+# Method 2: Convert from timestamp (auto-detect seconds/milliseconds, auto-add timezone)
 dt = from_timestamp(1758025061)
 dt_ms = from_timestamp(1758025061000)
 
-# Method 3: Convert from ISO string (automatically handle timezone)
-dt = from_iso_format("2025-09-15T13:11:15.588000")  # No timezone, automatically add Shanghai timezone
-dt_with_tz = from_iso_format("2025-09-15T13:11:15+08:00")  # Has timezone, keep original timezone then convert
+# Method 3: Convert from ISO string (auto-handle timezone)
+dt = from_iso_format("2025-09-15T13:11:15.588000")  # No timezone, auto-add Shanghai timezone
+dt_with_tz = from_iso_format("2025-09-15T13:11:15+08:00")  # Has timezone, preserve original then convert
 
-# Method 4: Format to ISO string (automatically include timezone)
+# Method 4: Format to ISO string (auto-include timezone)
 iso_str = to_iso_format(now)
 # Returns: "2025-09-16T20:20:06.517301+08:00"
 
@@ -629,25 +906,25 @@ ts = to_timestamp_ms(now)
 # Returns: 1758025061123
 ```
 
-**❌ Wrong Examples: Directly using datetime module**
+**❌ Wrong example: Direct use of datetime module**
 
 ```python
 import datetime
 
 # ❌ Wrong: Prohibit using datetime.datetime.now()
-naive_dt = datetime.datetime.now()  # Timezone ambiguous, prohibited!
+naive_dt = datetime.datetime.now()  # Timezone unclear, prohibit!
 
 # ❌ Wrong: Prohibit using datetime.datetime.utcnow()
-dt = datetime.datetime.utcnow()  # Deprecated in Python 3.12+, prohibited!
+dt = datetime.datetime.utcnow()  # Deprecated in Python 3.12+, prohibit!
 
 # ❌ Wrong: Prohibit using datetime.datetime.today()
-dt = datetime.datetime.today()  # Timezone ambiguous, prohibited!
+dt = datetime.datetime.today()  # Timezone unclear, prohibit!
 
 # ❌ Wrong: Manually creating naive datetime
-naive_dt = datetime.datetime(2025, 1, 1, 12, 0, 0)  # No timezone information
+naive_dt = datetime.datetime(2025, 1, 1, 12, 0, 0)  # No timezone info
 ```
 
-**🔧 How to Fix Existing Code**
+**🔧 How to fix existing code**
 
 ```python
 # Old code (wrong)
@@ -666,7 +943,7 @@ dt = datetime(2025, 1, 1, 12, 0, 0)
 
 # New code (correct)
 from common_utils.datetime_utils import from_iso_format
-dt = from_iso_format("2025-01-01T12:00:00")  # Automatically add Shanghai timezone
+dt = from_iso_format("2025-01-01T12:00:00")  # Auto-add Shanghai timezone
 
 # ----------------
 
@@ -678,139 +955,38 @@ from common_utils.datetime_utils import get_now_with_timezone, to_timestamp_ms
 ts = to_timestamp_ms(get_now_with_timezone())
 ```
 
-#### 3. Timezone Conversion Examples
-
-```python
-from common_utils.datetime_utils import get_now_with_timezone, to_timezone
-from zoneinfo import ZoneInfo
-
-# Get Shanghai time
-dt_shanghai = get_now_with_timezone()
-
-# Convert to UTC
-dt_utc = to_timezone(dt_shanghai, ZoneInfo("UTC"))
-
-# Convert to other timezone
-dt_ny = to_timezone(dt_shanghai, ZoneInfo("America/New_York"))
-```
-
-#### 4. Database Operation Standards
-
-**MongoDB Example**
-
-```python
-from common_utils.datetime_utils import get_now_with_timezone, from_iso_format
-
-# ✅ Correct: Insert time with timezone
-data = {
-    "created_at": get_now_with_timezone(),
-    "updated_at": get_now_with_timezone()
-}
-await collection.insert_one(data)
-
-# ✅ Correct: Query also use time with timezone
-start_time = from_iso_format("2025-01-01T00:00:00")
-results = await collection.find({"created_at": {"$gte": start_time}})
-```
-
-**PostgreSQL Example**
-
-```python
-from common_utils.datetime_utils import get_now_with_timezone
-
-# ✅ Correct: Use timestamptz type
-CREATE TABLE events (
-    id SERIAL PRIMARY KEY,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-# Python query
-dt = get_now_with_timezone()
-await conn.execute("INSERT INTO events (created_at) VALUES ($1)", dt)
-```
-
-#### 5. API Interface Standards
-
-**Receiving External Input**
-
-```python
-from common_utils.datetime_utils import from_iso_format
-import datetime
-
-def process_datetime_input(dt_str: str) -> datetime.datetime:
-    """Process external input time string"""
-    try:
-        # Use utility function to parse, automatically handle timezone
-        # If input has no timezone information, automatically add Shanghai timezone
-        dt = from_iso_format(dt_str)
-        return dt
-    except Exception as e:
-        raise ValueError(f"Invalid datetime format: {dt_str}") from e
-```
-
-**Returning Output**
-
-```python
-from common_utils.datetime_utils import to_iso_format
-import datetime
-
-# ✅ Correct: Return ISO 8601 format (including timezone)
-def serialize_datetime(dt: datetime.datetime) -> str:
-    """Serialize datetime to ISO 8601 format"""
-    if dt.tzinfo is None:
-        raise ValueError("datetime must be timezone-aware")
-    # Use utility function to format, automatically include timezone information
-    return to_iso_format(dt)
-
-# Example output: "2025-01-01T12:00:00+08:00"
-```
-
-#### 6. Common Questions and Precautions
-
-**Q: Why choose Shanghai timezone as default timezone?**  
-A: The project mainly serves Chinese users, Shanghai timezone (Asia/Shanghai, UTC+8) is the most commonly used timezone.
-
-**Q: Can I use pytz library?**  
-A: Python 3.9+ recommends using the standard library's `zoneinfo`, which is the officially recommended timezone handling solution. `pytz` is gradually being phased out.
-
-**Q: Should database store UTC or local timezone?**  
-A: Recommend storing UTC timezone, convert to user's required timezone when displaying. This avoids issues like daylight saving time.
-
-**Q: How to handle naive datetime in historical data?**  
-A: Need to write data migration script to add Shanghai timezone information to all naive datetimes. Refer to [Data Migration Standards](#data-migration-and-schema-change-process).
-
 ### Checklist
 
-During code review, please confirm the following:
+During code review, please confirm:
 
-- [ ] **Prohibit directly using `datetime.datetime.now()`**, must use `get_now_with_timezone()`
-- [ ] **Prohibit directly using `datetime.datetime.utcnow()`** or `datetime.datetime.today()`
+- [ ] **Prohibit direct use of `datetime.datetime.now()`**, must use `get_now_with_timezone()`
+- [ ] **Prohibit direct use of `datetime.datetime.utcnow()`** or `datetime.datetime.today()`
 - [ ] All time retrieval goes through utility functions in `common_utils/datetime_utils.py`
-- [ ] Time parsed from external input uses `from_iso_format()` or `from_timestamp()` for processing
+- [ ] Time parsed from external input uses `from_iso_format()` or `from_timestamp()`
 - [ ] Time formatting uses `to_iso_format()` instead of manually calling `.isoformat()`
 - [ ] Timestamp conversion uses `to_timestamp_ms()` instead of manual calculation
-- [ ] Database schema uses timezone-aware types (e.g. `timestamptz`)
-- [ ] Time strings returned by API include timezone information (ISO 8601 format)
-- [ ] Test data used in unit tests all have timezone information
+- [ ] Database schema uses timezone-aware types (e.g., `timestamptz`)
+- [ ] API response time strings include timezone info (ISO 8601 format)
+- [ ] Test data in unit tests all have timezone info
 
 ---
 
 ## 🏛️ Data Access Standards
 
-### Core Principles
+### Core Principle
 
-**💡 Important Note: All external storage access must go through infra layer repositories**
+**💡 Important Note: All external storage access must go through infra layer repository**
 
-When handling databases, search engines and other external storage systems, must follow strict layered architecture principles. All data read/write operations must be converged to the `repository` layer in `infra_layer`. Direct calls to external repository capabilities in business layers or other upper layers are prohibited.
+When handling databases, search engines and other external storage systems, must follow strict layered architecture principles. All data read/write operations must be converged to `infra_layer` `repository` layer, prohibit direct calls to external storage capabilities in business layer or other upper layers.
 
-**⚠️ Prohibited from directly accessing external storage in the following layers**
+**⚠️ Prohibit direct external storage access in these layers**
 - ❌ `biz_layer` (Business layer)
 - ❌ `memory_layer` (Memory layer)
 - ❌ `agentic_layer` (Agent layer)
 - ❌ API interface layer (`api_specs`)
 - ❌ Application layer (`app.py`, controllers, etc.)
 
-**✅ Must access through the following methods**
+**✅ Must access through**
 - `infra_layer/adapters/out/persistence/repository/` - Database access
 - `infra_layer/adapters/out/search/repository/` - Search engine access
 
@@ -819,16 +995,16 @@ When handling databases, search engines and other external storage systems, must
 #### 1. Separation of Concerns
 
 Following Hexagonal Architecture and Clean Architecture principles:
-- **Business layer**: Focus on business logic, doesn't care where data comes from
-- **Infrastructure layer**: Responsible for all interaction details with external systems
-- **Isolate changes**: When replacing database or search engine, only need to modify infra layer
+- **Business layer**: Focus on business logic, don't care where data comes from
+- **Infrastructure layer**: Handle all external system interaction details
+- **Isolate changes**: When changing database or search engine, only need to modify infra layer
 
 #### 2. Testability
 
 ```python
-# ✅ Benefit: Business layer depends on abstract interface, easy to mock for testing
+# ✅ Benefit: Business layer depends on abstract interface, easy to mock test
 async def process_user_memory(user_id: str, memory_repo: MemoryRepository):
-    """Business logic doesn't depend on concrete implementation"""
+    """Business logic doesn't depend on specific implementation"""
     memories = await memory_repo.find_by_user_id(user_id)
     # Business processing...
     
@@ -839,399 +1015,59 @@ await process_user_memory("user_1", mock_repo)
 
 #### 3. Code Reuse and Consistency
 
-- Avoid repeating same database query logic in multiple places
-- Unified handling of exceptions, logging, performance monitoring
-- Unified handling of data conversion and validation
+- Avoid repeatedly writing same database query logic in multiple places
+- Unified exception handling, logging, performance monitoring
+- Unified data transformation, validation
 
 #### 4. Centralized Performance Optimization
 
-- Index optimization and query optimization uniformly implemented in repository layer
-- Cache strategy uniformly managed
+- Index optimization, query optimization implemented uniformly in repository layer
+- Cache strategies managed uniformly
 - Batch operation optimization done in one place, benefits entire project
 
-### Correct Architectural Layering
+### Correct Architecture Layering
 
 ```
 ┌─────────────────────────────────────────┐
 │  API Layer (api_specs, app.py)         │
 │  - Receive requests, return responses   │
 └─────────────┬───────────────────────────┘
-              │ Calls
+              │ calls
               ▼
 ┌─────────────────────────────────────────┐
 │  Business Layer (biz_layer)             │
 │  - Business logic processing            │
 │  - Depends on abstract interfaces (Port)│
 └─────────────┬───────────────────────────┘
-              │ Dependency Injection
+              │ dependency injection
               ▼
 ┌─────────────────────────────────────────┐
 │  Memory Layer (memory_layer)            │
 │  - Memory management logic              │
 │  - Depends on abstract interfaces (Port)│
 └─────────────┬───────────────────────────┘
-              │ Dependency Injection
+              │ dependency injection
               ▼
 ┌─────────────────────────────────────────┐
 │  Infrastructure Layer (infra_layer)     │
-│  - Repository implementations (Adapter) │
-│  - Directly operate DB/search engines   │
-│  - MongoDB, PostgreSQL, ES, Milvus     │
+│  - Repository implementation (Adapter)  │
+│  - Directly operate database/search     │
+│  - MongoDB, PostgreSQL, ES, Milvus      │
 └─────────────────────────────────────────┘
-```
-
-### Implementation Standards
-
-#### ✅ Correct Example: Access through Repository
-
-**Define Repository Interface (Port)**
-
-```python
-# core/ports/memory_repository.py
-from abc import ABC, abstractmethod
-from typing import List, Optional
-
-class MemoryRepository(ABC):
-    """Memory repository interface (abstract)"""
-    
-    @abstractmethod
-    async def save(self, memory: Memory) -> str:
-        """Save memory"""
-        pass
-    
-    @abstractmethod
-    async def find_by_id(self, memory_id: str) -> Optional[Memory]:
-        """Find memory by ID"""
-        pass
-    
-    @abstractmethod
-    async def find_by_user_id(self, user_id: str, limit: int = 100) -> List[Memory]:
-        """Find memory list by user ID"""
-        pass
-    
-    @abstractmethod
-    async def search_foresight(self, query: str, user_id: str, top_k: int = 10) -> List[Memory]:
-        """Foresight search"""
-        pass
-```
-
-**Implement Repository (Adapter)**
-
-```python
-# infra_layer/adapters/out/persistence/repository/memory_mongo_repository.py
-from pymongo.asynchronous.database import AsyncDatabase
-from core.ports.memory_repository import MemoryRepository
-from core.domain.memory import Memory
-
-class MemoryMongoRepository(MemoryRepository):
-    """MongoDB memory repository implementation"""
-    
-    def __init__(self, db: AsyncDatabase):
-        self._collection = db["memories"]
-    
-    async def save(self, memory: Memory) -> str:
-        result = await self._collection.insert_one(memory.to_dict())
-        return str(result.inserted_id)
-    
-    async def find_by_id(self, memory_id: str) -> Optional[Memory]:
-        doc = await self._collection.find_one({"_id": memory_id})
-        return Memory.from_dict(doc) if doc else None
-    
-    async def find_by_user_id(self, user_id: str, limit: int = 100) -> List[Memory]:
-        cursor = self._collection.find({"user_id": user_id}).limit(limit)
-        docs = await cursor.to_list(length=limit)
-        return [Memory.from_dict(doc) for doc in docs]
-    
-    async def search_foresight(self, query: str, user_id: str, top_k: int = 10) -> List[Memory]:
-        # Call vector search (encapsulated in infra layer)
-        # May also call ElasticSearch or Milvus here
-        ...
-```
-
-**Business Layer Uses Repository**
-
-```python
-# biz_layer/services/memory_service.py
-from core.ports.memory_repository import MemoryRepository
-from core.domain.memory import Memory
-
-class MemoryService:
-    """Memory business service"""
-    
-    def __init__(self, memory_repo: MemoryRepository):
-        # ✅ Dependency injection: depend on abstract interface, not concrete implementation
-        self._memory_repo = memory_repo
-    
-    async def create_memory(self, user_id: str, content: str) -> str:
-        """Create memory (business logic)"""
-        # Business logic: construct domain object
-        memory = Memory(user_id=user_id, content=content)
-        
-        # ✅ Correct: save through repository
-        memory_id = await self._memory_repo.save(memory)
-        return memory_id
-    
-    async def get_user_memories(self, user_id: str) -> List[Memory]:
-        """Get user memory list"""
-        # ✅ Correct: query through repository
-        return await self._memory_repo.find_by_user_id(user_id)
-    
-    async def search_memories(self, user_id: str, query: str) -> List[Memory]:
-        """Search memories"""
-        # ✅ Correct: foresight search through repository
-        return await self._memory_repo.search_foresight(query, user_id)
-```
-
-#### ❌ Wrong Example: Business Layer Directly Accesses Database
-
-```python
-# ❌ Wrong: Business layer directly uses MongoDB driver
-from pymongo import AsyncMongoClient
-
-class MemoryService:
-    def __init__(self, db_uri: str):
-        # ❌ Business layer should not directly connect to database
-        self._client = AsyncMongoClient(db_uri)
-        self._db = self._client["memsys"]
-    
-    async def create_memory(self, user_id: str, content: str) -> str:
-        # ❌ Business layer should not directly operate collection
-        result = await self._db.memories.insert_one({
-            "user_id": user_id,
-            "content": content
-        })
-        return str(result.inserted_id)
-```
-
-```python
-# ❌ Wrong: memory_layer directly uses ElasticSearch
-from elasticsearch import AsyncElasticsearch
-
-class MemoryRetriever:
-    def __init__(self, es_hosts: list):
-        # ❌ Should not directly create ES client at this layer
-        self._es = AsyncElasticsearch(hosts=es_hosts)
-    
-    async def search(self, query: str) -> list:
-        # ❌ Should not directly call ES API
-        result = await self._es.search(index="memories", body={
-            "query": {"match": {"content": query}}
-        })
-        return result["hits"]["hits"]
-```
-
-```python
-# ❌ Wrong: API layer directly accesses database
-from fastapi import APIRouter
-from pymongo import AsyncMongoClient
-
-router = APIRouter()
-db_client = AsyncMongoClient("mongodb://localhost")
-
-@router.get("/memories/{user_id}")
-async def get_memories(user_id: str):
-    # ❌ API layer should not directly query database
-    db = db_client["memsys"]
-    memories = await db.memories.find({"user_id": user_id}).to_list(100)
-    return {"data": memories}
-```
-
-### Dependency Injection Configuration
-
-**Use dependency injection container to manage dependencies**
-
-```python
-# application_startup.py or bootstrap.py
-from dependency_injector import containers, providers
-from infra_layer.adapters.out.persistence.repository.memory_mongo_repository import MemoryMongoRepository
-from biz_layer.services.memory_service import MemoryService
-
-class Container(containers.DeclarativeContainer):
-    """Dependency injection container"""
-    
-    # Configuration
-    config = providers.Configuration()
-    
-    # Database connection
-    mongodb_client = providers.Singleton(
-        AsyncMongoClient,
-        config.mongodb.uri
-    )
-    
-    mongodb_database = providers.Singleton(
-        lambda client: client[config.mongodb.database],
-        client=mongodb_client
-    )
-    
-    # Repository layer (infrastructure)
-    memory_repository = providers.Factory(
-        MemoryMongoRepository,
-        db=mongodb_database
-    )
-    
-    # Service layer (business logic)
-    memory_service = providers.Factory(
-        MemoryService,
-        memory_repo=memory_repository
-    )
-```
-
-### Search Engine Access Standards
-
-**ElasticSearch / Milvus also follow Repository pattern**
-
-```python
-# infra_layer/adapters/out/search/repository/foresight_es_repository.py
-from elasticsearch import AsyncElasticsearch
-from typing import List
-
-class ForesightESRepository:
-    """ElasticSearch foresight repository"""
-    
-    def __init__(self, es_client: AsyncElasticsearch, index_name: str):
-        self._es = es_client
-        self._index = index_name
-    
-    async def index_memory(self, memory_id: str, content: str, embedding: List[float]):
-        """Index memory to ES"""
-        await self._es.index(
-            index=self._index,
-            id=memory_id,
-            body={
-                "content": content,
-                "embedding": embedding
-            }
-        )
-    
-    async def search_by_vector(self, query_vector: List[float], top_k: int = 10) -> List[dict]:
-        """Vector search"""
-        result = await self._es.search(
-            index=self._index,
-            body={
-                "query": {
-                    "script_score": {
-                        "query": {"match_all": {}},
-                        "script": {
-                            "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
-                            "params": {"query_vector": query_vector}
-                        }
-                    }
-                },
-                "size": top_k
-            }
-        )
-        return result["hits"]["hits"]
-```
-
-**Business Layer Calls Search Repository**
-
-```python
-# memory_layer/retrievers/foresight_retriever.py
-from infra_layer.adapters.out.search.repository.foresight_es_repository import ForesightESRepository
-
-class ForesightRetriever:
-    """Foresight retriever (business logic layer)"""
-    
-    def __init__(self, search_repo: ForesightESRepository):
-        # ✅ Depend on abstraction, get repository through dependency injection
-        self._search_repo = search_repo
-    
-    async def retrieve_similar_memories(self, query_embedding: List[float], top_k: int = 10):
-        """Retrieve similar memories"""
-        # ✅ Access search engine through repository
-        results = await self._search_repo.search_by_vector(query_embedding, top_k)
-        # Business logic: filtering, sorting, formatting, etc.
-        return self._process_results(results)
-```
-
-### Multiple Data Source Scenarios
-
-**Repository can encapsulate access to multiple data sources**
-
-```python
-# infra_layer/adapters/out/persistence/repository/memory_hybrid_repository.py
-class MemoryHybridRepository(MemoryRepository):
-    """Hybrid memory repository: MongoDB + ElasticSearch"""
-    
-    def __init__(
-        self,
-        mongo_repo: MemoryMongoRepository,
-        es_repo: ForesightESRepository
-    ):
-        self._mongo = mongo_repo
-        self._es = es_repo
-    
-    async def save(self, memory: Memory) -> str:
-        """Save to MongoDB and ES"""
-        # Save to MongoDB
-        memory_id = await self._mongo.save(memory)
-        
-        # Sync to ElasticSearch (async task or immediate sync)
-        await self._es.index_memory(
-            memory_id=memory_id,
-            content=memory.content,
-            embedding=memory.embedding
-        )
-        
-        return memory_id
-    
-    async def search_foresight(self, query: str, user_id: str, top_k: int = 10) -> List[Memory]:
-        """Foresight search: ES query + MongoDB supplement details"""
-        # 1. ES search to get relevant IDs
-        es_results = await self._es.search_by_text(query, top_k)
-        memory_ids = [hit["_id"] for hit in es_results]
-        
-        # 2. MongoDB batch query for complete data
-        memories = await self._mongo.find_by_ids(memory_ids)
-        return memories
 ```
 
 ### Checklist
 
-When writing or reviewing code, please confirm the following:
+When writing or reviewing code, please confirm:
 
 - [ ] **Are database operations in infra_layer/repository?**
 - [ ] **Are search engine operations in infra_layer/repository?**
-- [ ] **Does business layer depend on abstract interfaces (Port) rather than concrete implementations?**
-- [ ] **Is dependency injection used to pass repositories?**
+- [ ] **Does business layer depend on abstract interfaces (Port) not concrete implementations?**
+- [ ] **Is dependency injection used to pass repository?**
 - [ ] **Avoid directly creating database connections in business/API/application layers?**
 - [ ] **Avoid directly using MongoDB/PostgreSQL/ES/Milvus clients in business layer?**
-- [ ] **Are newly added Repositories registered in dependency injection container?**
-- [ ] **Do Repository methods have clear business semantics (rather than exposing underlying implementation details)?**
-
-### Common Questions
-
-**Q: Why can't I directly use MongoDB driver in business layer?**  
-A: It violates architectural layering principles, causing business logic to be coupled with infrastructure, making it difficult to test and replace data sources.
-
-**Q: Do simple queries also need to go through Repository?**  
-A: Yes. Even simple queries should be encapsulated in Repository. This allows:
-   - Unified management of all data access
-   - Only need to modify one place for subsequent optimization
-   - Keep code style consistent
-
-**Q: Should Repository methods return dict or domain objects?**  
-A: Recommend returning domain objects (like `Memory`, `User`), so business layer doesn't need to care about underlying data format.
-
-**Q: How to handle complex join queries?**  
-A: Encapsulate complex query logic in Repository layer, provide semantic methods externally. For example:
-```python
-async def find_memories_with_user_info(self, user_id: str) -> List[MemoryWithUser]:
-    # Handle join or multiple queries inside Repository
-    ...
-```
-
-**Q: Can I call other Repositories within a Repository?**  
-A: Yes, but be careful:
-   - Avoid circular dependencies
-   - Complex cross-data-source logic should be coordinated in business layer
-   - Repository responsibilities should be single
-
-### Related Documentation
-
-- [Hexagonal Architecture](https://en.wikipedia.org/wiki/Hexagonal_architecture_(software))
-- [Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [Dependency Injection Pattern](https://python-dependency-injector.ets-labs.org/)
+- [ ] **Has new Repository been registered in dependency injection container?**
+- [ ] **Do Repository methods have clear business semantics (not exposing underlying implementation details)?**
 
 ---
 
@@ -1241,32 +1077,32 @@ A: Yes, but be careful:
 
 **💡 Important Note: PYTHONPATH needs unified management**
 
-The project uniformly manages `PYTHONPATH` and module import paths. Changes involving path configuration should be communicated with development lead before unified configuration.
+The project uniformly manages `PYTHONPATH` and module import paths. Changes involving path configuration should be discussed with development lead before unified configuration.
 
-#### Why Need Unified Management?
+#### Why Unified Management?
 
 - Chaotic import paths may cause modules not found or import errors
-- Inconsistent paths in different environments (development/test/production) may cause deployment issues
+- Inconsistent paths across environments (dev/test/prod) may cause deployment issues
 - Inconsistent IDE configuration may affect team collaboration
-- Mixing relative imports and absolute imports increases code maintenance difficulty
+- Mixing relative and absolute imports increases code maintenance difficulty
 
 #### Management Scope
 
-Import paths for the following directories in the project should be kept consistent:
+The following directories in the project should maintain unified import paths:
 
 - `src/`: Main business code
 - `tests/`: Test code
 - `unit_test/`: Unit tests
 - `evaluation/`: Evaluation scripts
-- Other directories that need to be imported (such as `demo/` etc.)
+- Other directories needing to be imported (e.g., `demo/`)
 
 #### Recommended Practices
 
-1. **Unified Project Root Directory**
-   - Project root directory is `/Users/admin/memsys` (or corresponding path in deployment environment)
-   - src directory is added to PYTHONPATH, import starts directly from module name
+1. **Unified project root directory**
+   - Project root is `/Users/admin/memsys` (or corresponding deployment path)
+   - src directory added to PYTHONPATH, import directly from module name
 
-2. **Import Standard Examples**
+2. **Import standard examples**
 
 ```python
 # ✅ Recommended: Absolute import (src already in PYTHONPATH)
@@ -1277,7 +1113,7 @@ from tests.fixtures.mock_data import get_mock_user
 # ✅ Recommended: Import in test files
 from unit_test.email_data_constructor import construct_email
 
-# ❌ Not recommended: Relative import across levels
+# ❌ Not recommended: Cross-level relative import
 from ...core.memory.manager import MemoryManager
 
 # ❌ Not recommended: Including src prefix (src already in PYTHONPATH, no prefix needed)
@@ -1288,53 +1124,21 @@ import sys
 sys.path.append("../src")  # May cause environment inconsistency
 ```
 
-3. **Path Configuration Change Process**
-
-If you need to:
-- Add new importable directory
-- Modify existing directory import method
-- Adjust PYTHONPATH configuration
-
-**Recommended process**:
-
-1. **Discuss with Development Lead**: Explain reason and impact scope of change
-2. **Unified Configuration**: Update the following files
-   - `src/bootstrap.py`: Startup entry
-   - `auto.sh`: Automation scripts
-   - `.vscode/settings.json` or `.idea` configuration
-   - Environment variable settings in deployment scripts
-3. **Document Update**: Update this document and related development documents
-4. **Team Notification**: Notify all developers to sync configuration
-
-4. **IDE Configuration (Recommended Unified)**
-
-Recommend marking project root directory as Sources Root in IDE:
-
-- **PyCharm**: Right-click project root directory → Mark Directory as → Sources Root
-- **VSCode**: Configure in `.vscode/settings.json`:
-  ```json
-  {
-    "python.analysis.extraPaths": [
-      "${workspaceFolder}"
-    ]
-  }
-  ```
-
 ### Prefer Absolute Imports
 
-**💡 Important Note: Recommend using absolute imports, avoid relative imports**
+**💡 Important Note: Recommend absolute imports, avoid relative imports**
 
 #### Why Recommend Absolute Imports?
 
-Relative imports, although more concise in some scenarios, have the following issues:
+Although relative imports are more concise in some scenarios, they have these issues:
 
-- **Poor readability**: `from ...core.memory import Manager` is not as intuitive as `from core.memory import Manager`
+- **Poor readability**: `from ...core.memory import Manager` is less intuitive than `from core.memory import Manager`
 - **Difficult refactoring**: Moving files requires modifying all relative import levels
-- **Complex debugging**: Relative import paths in stack traces are not clear enough
-- **Tool support**: IDE and static analysis tools have better support for absolute imports
-- **Test convenience**: Test files using absolute imports are easier to understand dependency relationships
+- **Complex debugging**: Stack traces with relative import paths are unclear
+- **Tool support**: IDE and static analysis tools support absolute imports better
+- **Testing convenience**: Test files using absolute imports are easier to understand dependencies
 
-#### Import Method Comparison
+#### Import Style Comparison
 
 ```python
 # ✅ Recommended: Absolute import (src already in PYTHONPATH)
@@ -1343,76 +1147,17 @@ from core.memory.types import MemoryType, MemoryStatus
 from infra_layer.adapters.out.db.mongodb import MongoDBAdapter
 from common_utils.logger import get_logger
 
-# ✅ Acceptable: Relative import within same package (single level)
+# ✅ Acceptable: Single-level relative import within same package
 # File: src/core/memory/manager.py
 from .types import MemoryType  # Same directory
 from .extractors.base import BaseExtractor  # Subdirectory
 
-# ❌ Not recommended: Relative import across levels
+# ❌ Not recommended: Cross-level relative import
 from ...infra_layer.adapters import MongoDBAdapter
 from ....common_utils.logger import get_logger
 
-# ❌ Not recommended: Relative import up multiple levels (hard to maintain)
+# ❌ Not recommended: Multi-level upward relative import (hard to maintain)
 from ......some_module import something
-```
-
-#### Usage Rules
-
-**Recommended practices**:
-
-1. **Cross-module imports must use absolute imports**
-   ```python
-   # From src/core/memory/manager.py import to src/biz_layer/service.py
-   from core.memory.manager import MemoryManager  # ✅
-   ```
-
-2. **Within same package can use single-level relative import**
-   ```python
-   # In src/core/memory/manager.py
-   from .types import MemoryType  # ✅ Same directory
-   from .extractors.base import BaseExtractor  # ✅ Subdirectory
-   ```
-
-3. **Avoid relative imports up multiple levels**
-   ```python
-   from ...infra_layer import something  # ❌ Should change to absolute import
-   from infra_layer import something  # ✅
-   ```
-
-#### Special Scenario Descriptions
-
-**Scenario 1: Module imports within package**
-
-For modules within a package that need to import each other:
-
-```python
-# Package structure:
-# src/core/memory/
-#   ├── __init__.py
-#   ├── manager.py
-#   ├── types.py
-#   └── extractors/
-#       ├── __init__.py
-#       └── base.py
-
-# In manager.py:
-from .types import MemoryType  # ✅ Acceptable single-level relative import
-from core.memory.types import MemoryType  # ✅ Can also use absolute import
-
-# In extractors/base.py:
-from ..types import MemoryType  # 🤔 OK, but absolute import is better
-from core.memory.types import MemoryType  # ✅ Recommended
-```
-
-**Scenario 2: Test file imports**
-
-Test files recommend using absolute imports entirely:
-
-```python
-# tests/test_memory_manager.py
-from core.memory.manager import MemoryManager  # ✅
-from core.memory.types import MemoryType  # ✅
-from tests.fixtures.mock_data import get_mock_data  # ✅
 ```
 
 ### __init__.py Usage Standards
@@ -1422,135 +1167,89 @@ from tests.fixtures.mock_data import get_mock_data  # ✅
 #### Why Keep `__init__.py` Empty?
 
 - **Import side effects**: `__init__.py` executes when package is imported, any code may produce unexpected side effects
-- **Circular dependencies**: Even simple module exports can easily lead to circular import issues
-- **Performance impact**: Executing code when importing package affects startup performance and module loading speed
+- **Circular dependencies**: Even simple module exports easily cause circular import issues
+- **Performance impact**: Code execution during import affects startup performance and module loading speed
 - **Maintainability**: Code scattered in `__init__.py` is hard to locate and maintain
-- **Testing difficulty**: Mock and unit testing become complex
+- **Testing difficulty**: Mock and unit tests become complex
 - **Implicit behavior**: Implicit execution during import increases code understanding difficulty
 
 #### Recommended Usage
 
-**✅ Recommended: Keep empty file**
+**✅ Recommended: Keep as empty file**
 
 ```python
 # src/core/memory/__init__.py
 
 # Empty file, only serves as Python package identifier
-# Don't write any code here
+# Do not write any code here
 ```
 
 **How to import modules?**
 
-Import directly from specific module files, don't depend on re-export from `__init__.py`:
+Import directly from specific module files, don't rely on `__init__.py` re-export:
 
 ```python
-# ✅ Recommended: Import directly from module file
+# ✅ Recommended: Import directly from module files
 from core.memory.manager import MemoryManager
 from core.memory.types import MemoryType, MemoryStatus
 from core.memory.extractors.base import BaseExtractor
 
-# ❌ Not recommended: Depend on re-export from __init__.py
+# ❌ Not recommended: Relying on __init__.py re-export
 from core.memory import MemoryManager  # Requires export code in __init__.py
-```
-
-**❌ Not Recommended Practices**
-
-```python
-# ❌ Don't re-export modules in __init__.py
-# src/core/memory/__init__.py
-from .manager import MemoryManager
-from .types import MemoryType, MemoryStatus
-from .extractors import BaseExtractor
-
-__all__ = ["MemoryManager", "MemoryType", "MemoryStatus", "BaseExtractor"]
-# Although looks harmless, it increases circular dependency risk and maintenance cost
-```
-
-```python
-# ❌ Don't initialize global objects in __init__.py
-# src/core/memory/__init__.py
-from .manager import MemoryManager
-
-# Don't do this!
-global_memory_manager = MemoryManager()  # ❌
-config = load_config()  # ❌
-db_connection = connect_to_db()  # ❌
-```
-
-```python
-# ❌ Don't write business functions or classes in __init__.py
-# src/core/memory/__init__.py
-
-def process_memory(data):  # ❌ Should be in separate module file
-    # Business logic...
-    pass
-
-class MemoryProcessor:  # ❌ Should be in separate module file
-    pass
-```
-
-```python
-# ❌ Don't execute any logic in __init__.py
-# src/core/__init__.py
-
-# Don't do this!
-import logging
-logging.basicConfig(...)  # ❌ Side effects
-
-if some_condition:  # ❌ Conditional execution
-    do_something()
-
-for item in items:  # ❌ Loop logic
-    process(item)
-
-__version__ = "1.0.0"  # ❌ Even version information is not recommended
-```
-
-#### Correct Code Organization
-
-Keep `__init__.py` empty, put all business code in separate module files:
-
-```python
-# Package structure:
-# src/core/memory/
-#   ├── __init__.py          # Empty file
-#   ├── manager.py           # MemoryManager class
-#   ├── types.py             # Type definitions
-#   ├── processor.py         # Business processing functions
-#   └── config.py            # Configuration management
-
-# src/core/memory/__init__.py - Keep empty
-# (Empty file, don't write any code)
-
-# src/core/memory/manager.py - Actual business logic
-class MemoryManager:
-    def __init__(self):
-        # Implementation details...
-        pass
-
-# src/core/memory/processor.py - Business functions
-def process_memory(data):
-    # Actual business logic...
-    pass
-
-# When using, import directly from specific module
-from core.memory.manager import MemoryManager
-from core.memory.types import MemoryType, MemoryStatus
-from core.memory.processor import process_memory
 ```
 
 #### Checklist
 
 When writing or reviewing `__init__.py`, please confirm:
 
-- [ ] Is the file empty (or only contains comments)?
-- [ ] Are there no import statements?
-- [ ] Are there no defined variables or constants?
-- [ ] Are there no created global object instances?
-- [ ] Are there no defined classes or functions?
-- [ ] Is there no executed logic?
+- [ ] File is empty (or only contains comments)?
+- [ ] No import statements?
+- [ ] No variable or constant definitions?
+- [ ] No global object instances created?
+- [ ] No classes or functions defined?
+- [ ] No logic executed?
 
-**If any of the above answers "no", please move the code to a separate module file.**
+**If any of the above answers "no", move the code to a separate module file.**
+
+---
+
+## 📁 Module Introduction File Naming
+
+### Core Principle
+
+**💡 Important Note: Use `introduction.md` as module introduction file**
+
+In subdirectories under `src/core/`, uniformly use lowercase `introduction.md` as module introduction file, not uppercase `README.md`.
+
+### Why Not Use README.md?
+
+- `README.md` may be auto-generated or legacy files
+- Using `introduction.md` clearly distinguishes manually written module introductions from auto-generated content
+- Maintains naming consistency and predictability
+
+### Naming Examples
+
+```
+src/core/
+├── di/
+│   └── introduction.md              # DI module introduction
+├── addons/
+│   └── introduction.md              # Addons module introduction
+├── component/
+│   └── introduction.md              # Component module introduction
+└── memory/
+    └── introduction.md              # Memory module introduction
+```
+
+### introduction.md Content Suggestions
+
+A good module introduction file should include:
+
+1. **Module overview**: Module functionality and positioning
+2. **Directory structure**: File organization within the module
+3. **Core features**: Main classes, functions, and interface descriptions
+4. **Usage examples**: Basic usage code examples
+5. **Related documentation**: Links to other related documents
 
 ---
 
@@ -1559,36 +1258,36 @@ When writing or reviewing `__init__.py`, please confirm:
 ### Branch Type Descriptions
 
 | Branch | Description | Notes |
-|------|------|------|
-| `master` | Stable version; only for bug fix checkout, `release/xxx` and `hotfix/xxx` merge here | Production environment deployment branch |
-| `dev` | Daily development version; continuous code commits | If versioning has started & commit is for current version, commit to `release`; non-urgent small bugs & features merge to `dev`, catch next release |
-| `release/YYMMDD` | Version branch; deploy to test first, then production; first `dev` merges `master`, then cut from `dev`; after actual release, merge back to `master`, `dev` | Currently irregular (notified in group); only bug commits for current release |
-| `feature/xxxx` | Single cycle, small feature; merge to `dev` or a `release` | Can directly merge to `dev`; recommend MR for merge to `release` |
-| `bugfix/xxxx` | Single cycle, small bug; merge to `dev` or a `release` | Can directly merge to `dev`; recommend MR for merge to `release` |
-| `long/xxx` | Cross-cycle, large feature; cut from `dev`, merge to `dev` or a `release` | Test separately in new test environment (distinguished by port/address); regularly merge `dev` to avoid too many conflicts at end; recommend MR |
-| `hotfix/xxxx` | Bug fix; cut from `master`, MR to `master` branch (also to `dev` if needed) | Only exists after release; bugs during normal development directly merge to `dev`, during versioning but not released yet merge to `release`, only use this for urgent bugs when not versioning; recommend MR |
+|--------|-------------|-------|
+| `master` | Stable version; only bug fix branches cut from here, `release/xxx` and `hotfix/xxx` merge here | Production deployment branch |
+| `dev` | Daily development version; continuous code commits | If versioning has started & commit is for this version, commit to `release`; non-urgent small bugs & features merge to `dev`, catch next release |
+| `release/YYMMDD` | Versioning branch; first deploy to test, then production; first merge `dev` to `master`, then cut from `dev`; after actual release merge back to `master`, `dev` | Currently irregular (notified in group); only this release's bug or code commits |
+| `feature/xxxx` | Single cycle, small feature; merge to `dev` or some `release` | Merge to `dev` can be direct; merge to `release` recommend MR |
+| `bugfix/xxxx` | Single cycle, small bug; merge to `dev` or some `release` | Merge to `dev` can be direct; merge to `release` recommend MR |
+| `long/xxx` | Cross-cycle, large feature; cut from `dev`, merge to `dev` or some `release` | Separate test in new test environment (port/address distinction); regularly merge `dev` to avoid too many conflicts at end; recommend MR |
+| `hotfix/xxxx` | Bug fix; cut from `master`, MR to `master` branch (`dev` if needed) | Only exists after release; normal dev stage bugs merge directly on `dev`, during versioning but before release merge to `release`, urgent bugs without current versioning use this branch; recommend MR |
 
-### Environment and Branch Correspondence
+### Environment and Branch Mapping
 
 | Environment | Possible Branches | Notes |
-|------|----------|------|
+|-------------|------------------|-------|
 | Production | `master` branch | Stable version |
-|      | `release/xxx` branch | After versioned release and before bug fix |
-| Test | `dev` branch | Daily development stage |
-|      | `release/xxx` branch | Versioned testing stage |
-|      | `hotfix/xxxx` | Emergency bug fix |
+|            | `release/xxx` branch | After versioned release and before bug fix |
+| Testing | `dev` branch | Daily development stage |
+|         | `release/xxx` branch | Versioning test stage |
+|         | `hotfix/xxxx` | Emergency bug fix |
 
 ### Version Tag Standards
 
 | Tag | Description | Notes |
-|-----|------|------|
-| `X.Y.Z` | Version number: Major.Iteration.BugFix | Not necessarily synced with iterations, add when needed |
+|-----|-------------|-------|
+| `X.Y.Z` | Version number: Major.Iteration.BugFix | May not sync with iterations, add when needed |
 
 - **X (Major version)**: Major architecture changes or incompatible updates
-- **Y (Iteration version)**: Feature iterations, new feature additions
-- **Z (Fix version)**: Bug fixes, minor optimizations
+- **Y (Iteration version)**: Feature iterations, new features added
+- **Z (Fix version)**: Bug fixes, small optimizations
 
-### Branch Operation Process
+### Branch Operation Flows
 
 #### 1. Daily Development (feature/bugfix)
 
@@ -1603,7 +1302,7 @@ git add .
 git commit -m "feat: your feature description"
 git push origin feature/your-feature-name
 
-# Merge to dev (small features can directly merge)
+# Merge to dev (small features can merge directly)
 git checkout dev
 git merge feature/your-feature-name
 git push origin dev
@@ -1613,10 +1312,10 @@ git branch -d feature/your-feature-name
 git push origin --delete feature/your-feature-name
 ```
 
-#### 2. Release Process (release)
+#### 2. Release Flow (release)
 
 ```bash
-# 1. Let dev merge master first (ensure including latest hotfixes)
+# 1. First merge dev to master (ensure includes latest hotfix)
 git checkout dev
 git pull origin dev
 git merge master
@@ -1626,13 +1325,13 @@ git push origin dev
 git checkout -b release/$(date +%y%m%d)
 git push origin release/$(date +%y%m%d)
 
-# 3. Bug fixes during testing phase
+# 3. Bug fixes during testing stage
 git checkout release/$(date +%y%m%d)
 # ... fix bugs ...
 git commit -m "fix: bug description"
 git push origin release/$(date +%y%m%d)
 
-# 4. Merge back to master and dev after release
+# 4. After release merge back to master and dev
 git checkout master
 git merge release/$(date +%y%m%d)
 git tag -a v1.2.3 -m "Release version 1.2.3"
@@ -1657,7 +1356,7 @@ git commit -m "hotfix: critical bug description"
 git push origin hotfix/critical-bug-fix
 
 # Create Merge Request to master
-# After merge, remember to sync to dev
+# After merge remember to sync to dev
 git checkout dev
 git merge master
 git push origin dev
@@ -1666,7 +1365,7 @@ git push origin dev
 #### 4. Long-term Feature Development (long)
 
 ```bash
-# Create long-term branch from dev
+# Create long branch from dev
 git checkout dev
 git pull origin dev
 git checkout -b long/big-feature
@@ -1680,359 +1379,196 @@ git merge dev
 
 ### Unified Branch Merge Handling Standards
 
-**⚠️ Important Note: The following branch merge operations need to be uniformly handled by development or operations lead**
+**⚠️ Important Note: The following branch merge operations need to be handled uniformly by development or operations lead**
 
-To ensure code quality and standard release process, the following types of branch merge operations need to be uniformly managed and executed by development lead or operations lead:
+To ensure code quality and release process standards, the following branch merge operations need to be managed and executed uniformly by development lead or operations lead:
 
-#### Merge Operations Requiring Unified Handling
+#### Merge Operations Needing Unified Handling
 
 1. **Long-term feature branch merge to dev**
    - `long/xxx` → `dev`
-   - Reason: Long-term feature branches usually involve large code changes, need to assess impact scope and potential conflicts
+   - Reason: Long-term feature branches usually involve large code changes, need to evaluate impact scope and potential conflicts
 
-2. **Dev cut out release branch**
+2. **Cut release branch from dev**
    - `dev` → `release/YYMMDD`
-   - Reason: Release nodes need unified coordination to ensure version content is complete and meets release requirements
+   - Reason: Release nodes need unified coordination, ensure version content is complete and meets release requirements
 
-3. **Release merge back to dev**
+3. **Merge release back to dev**
    - `release/YYMMDD` → `dev`
-   - Reason: Ensure bug fixes from release branch can be correctly synced back to main development branch
+   - Reason: Ensure release branch bug fixes correctly sync back to main development branch
 
-#### Operation Process
+#### Notes
 
-**Developer Operations**:
+- Small feature branches (`feature/xxx`, `bugfix/xxx`) merging to `dev` can be done by developers
+- Emergency `hotfix` merging to `master` recommend MR process with lead review
+- All merges involving `release` and `master` recommend lead confirmation
+
+---
+
+## 📤 MR Standards
+
+### Core Principles
+
+#### 1. Small Steps, Reduce Single Commit Size
+
+**💡 Important Note: Keep code commits small, iterate quickly, avoid submitting too much code at once**
+
+Each MR should stay small and focused, easy to review and track issues.
+
+**Why small steps?**
+
+- **Easy to Review**: Smaller changes are easier to understand and review, higher Review quality
+- **Fast feedback**: Small batch commits get feedback faster, adjust direction in time
+- **Issue location**: When problems occur, easier to locate specific commit
+- **Lower risk**: Risk of merging large amounts of code at once is much higher than multiple small merges
+- **Reduce conflicts**: Frequent small batch merges reduce code conflict probability and complexity
+
+**Recommended practices**:
+
 ```bash
-# 1. Ensure branch code is pushed to remote
-git push origin your-branch
+# ✅ Recommended: Split commits by feature points or logical units
+git commit -m "feat: add user authentication endpoint"
+git commit -m "feat: add user authentication middleware"
+git commit -m "test: add user authentication unit tests"
 
-# 2. Contact development lead or operations lead
-# 3. Explain merge requirements:
-#    - Source branch name
-#    - Target branch name
-#    - Merge reason and impact scope
-#    - Whether testing is complete
+# ❌ Not recommended: Submit large amounts of unrelated changes at once
+git commit -m "feat: complete all user module features"  # Contains dozens of file changes
 ```
 
-**Lead Operations**:
-```bash
-# 1. Check code quality and testing situation
-# 2. Assess conflicts and impact scope
-# 3. Choose appropriate time window to execute merge
-# 4. Notify relevant personnel after merge complete
-```
+**Commit split suggestions**:
 
-#### Why Need Unified Handling?
+| Commit Type | Recommended Size | Description |
+|-------------|-----------------|-------------|
+| **Feature development** | 50-200 lines | One independent feature point or logical unit |
+| **Bug fix** | As small as possible | Only include code necessary for fix |
+| **Refactoring** | 100-300 lines | Only one type of refactoring at a time |
+| **Documentation** | Flexible | Documentation updates can be relatively flexible |
 
-- **Code quality control**: Ensure merged code has gone through sufficient testing and review
-- **Version management standards**: Avoid version confusion and non-standard release process
-- **Professional conflict handling**: Complex conflicts need experienced personnel to handle
-- **Unified team coordination**: Avoid chaos caused by multiple people operating simultaneously
-- **Risk control**: Important branch merges need rollback plans
+#### 2. Ensure Each Commit is Runnable
 
-#### Precautions
+**💡 Important Note: Try not to submit broken or work-in-progress code, each commit should be runnable**
 
-- Small feature branches (`feature/xxx`, `bugfix/xxx`) merging to `dev` can be done by developers themselves
-- Emergency `hotfix` merging to `master` recommend MR process and review by lead
-- All merges involving `release` and `master` recommend confirmation by lead
+Each commit to shared branches (like `dev`, `release`) should be a runnable complete state.
+
+**Why ensure commit quality?**
+
+- **Continuous integration**: Ensure CI/CD pipeline won't fail due to incomplete code
+- **Team collaboration**: Other developers can run and develop normally after pulling code
+- **Fast rollback**: Any commit is a stable point that can be safely rolled back to
+- **Code tracing**: Tools like `git bisect` need each commit to be runnable
+
+**Pre-commit checklist**:
+
+- [ ] Code passes pre-commit checks (formatting, lint, etc.)
+- [ ] No obvious syntax or runtime errors
+- [ ] Related unit tests pass
+- [ ] Feature is complete, not half-finished
+- [ ] No debug code (like `print` debug statements, commented out code blocks)
+- [ ] No sensitive information (passwords, keys, tokens, etc.)
+
+#### 3. Files Requiring Code Review
+
+**💡 Important Note: The following types of file changes must go through Code Review**
+
+To ensure code quality and system stability, changes to the following files or directories must create MR and assign reviewers:
+
+##### Data-related Files
+
+| File/Directory | Description | Risk Level |
+|----------------|-------------|------------|
+| `migrations/` | Database migration scripts | 🔴 High |
+| `devops_scripts/data_fix/` | Data fix scripts | 🔴 High |
+| Any batch scripts involving `insert`/`update`/`delete` | Batch data changes | 🔴 High |
+
+##### Dependency-related Files
+
+| File/Directory | Description | Risk Level |
+|----------------|-------------|------------|
+| `pyproject.toml` | Dependency configuration changes | 🟠 Medium-High |
+| `uv.lock` | Dependency lock file changes | 🟠 Medium-High |
+
+##### Infrastructure-related Files
+
+| File/Directory | Description | Risk Level |
+|----------------|-------------|------------|
+| `infra_layer/` | Infrastructure layer code | 🟠 Medium-High |
+| `bootstrap.py` | Application startup entry | 🔴 High |
+| `application_startup.py` | Application startup flow | 🔴 High |
+| `base_app.py` | Base application class | 🔴 High |
+| Dependency injection container config | DI container configuration | 🟠 Medium-High |
+
+##### Branch Merge Operations
+
+| Operation Type | Description | Risk Level |
+|----------------|-------------|------------|
+| Merge to `release/xxx` | Release branch merge | 🟠 Medium-High |
+| Merge to `master` | Main branch merge | 🔴 High |
+| `long/xxx` → `dev` | Long-term branch merge | 🟠 Medium-High |
 
 ---
 
 ## 🔍 Code Review Process
 
-### Code Review Recommended Scenarios
-
-The following situations recommend Code Review (creating Merge Request/Pull Request):
-
-#### 1. Data-related Changes
-
-- 💾 **Database Migration Scripts**
-  - New additions or modifications in `migrations/` directory
-  - Data structure changes (field additions/deletions/modifications, index changes)
-  
-- 💾 **Data Fix Scripts**
-  - Scripts in `devops_scripts/data_fix/` directory
-  - Scripts involving batch data modifications
-  - ElasticSearch data sync scripts
-
-#### 2. Dependency Package Changes
-
-- 📦 **Dependency Package Additions**
-  - Adding production or development dependencies
-  - Explain reason and purpose for addition
-  
-- 📦 **Dependency Package Deletions**
-  - Confirm no other modules depend on it
-  - Explain reason for deletion
-  
-- 📦 **Dependency Package Version Upgrades**
-  - Major version upgrades (e.g. 1.x → 2.x)
-  - Upgrades involving API changes
-  - Provide upgrade impact assessment
-
-Related changes affect:
-- `pyproject.toml`
-- `uv.lock`
-
-#### 3. Infrastructure Changes
-
-- 🏗️ **Infrastructure Additions or Changes**
-  - Adding middleware, database connection pools and other basic components
-  - Modifying infrastructure configuration (database, Redis, Kafka, etc.)
-  - Adding or modifying adapters under `infra_layer/`
-  
-- 🏗️ **Application Startup Loading Process**
-  - Modifying `bootstrap.py`
-  - Modifying `application_startup.py`
-  - Modifying `base_app.py`
-  - Modifying dependency injection container configuration
-
-#### 4. Important Branch Merges
-
-- 🔀 Merge to `release/xxx` branch
-- 🔀 Merge to `master` branch (hotfix)
-- 🔀 `long/xxx` long-term branch merge to `dev`
-
 ### Data Migration and Schema Change Process
 
 **⚠️ Important Principle: Plan ahead, communicate fully**
 
-When launching new features involving data fixes or Schema migration, should discuss with development lead and operations lead as early as possible to ensure feasibility of data migration solution and timing arrangement for subsequent implementation.
+When launching new features involving data fixes or Schema migration, discuss feasibility and subsequent implementation timing with development lead and operations lead as early as possible.
 
-#### Why Need Early Communication?
+#### Why Early Communication?
 
 Data migration and Schema changes are high-risk operations that may affect:
 
 - **Data integrity**: Data structure changes may cause data loss or corruption
 - **Service availability**: Large-scale data migration may affect service performance
 - **Rollback complexity**: Rollback after Schema changes is often more complex than code rollback
-- **Time window**: Need to reserve enough time for data migration and verification
-- **Multi-team collaboration**: Involves cooperation of multiple teams including development, testing, and operations
-
-#### Data Migration Process Recommendations
-
-##### 1. Solution Design Phase
-
-**Timing**: Before feature development or early in development
-
-**Operation Steps**:
-- Discuss with development lead:
-  - Necessity of data structure changes
-  - Technical feasibility of migration solution
-  - Whether need to be compatible with old data format
-  - Estimate data volume and migration duration
-  
-- Discuss with operations lead:
-  - Impact of migration on service performance
-  - Whether need downtime maintenance
-  - Rollback solution and contingency plan
-  - Data backup strategy
-
-**Deliverables**:
-- Data migration solution document
-- Risk assessment report
-- Time schedule plan
-
-##### 2. Script Development Phase
-
-**Timing**: Mid-feature development
-
-**Operation Steps**:
-- Write Migration script or data fix script
-- Test script in development environment
-- Assess script performance (processing speed, resource usage)
-- Prepare data verification script
-- Write rollback script
-
-**Precautions**:
-- Script must go through Code Review (see "Data-related Changes" above)
-- Script should support incremental execution and checkpoint resume
-- Add detailed logging
-- Consider batch processing, avoid loading large amounts of data at once
-
-##### 3. Test Verification Phase
-
-**Timing**: Late feature development
-
-**Operation Steps**:
-- Execute complete migration process in test environment
-- Verify data integrity and correctness
-- Test compatibility of new features with migrated data
-- Test effectiveness of rollback process
-- Record migration duration and resource usage
-
-**Verification Checklist**:
-- [ ] Data volume statistics correct (before and after migration comparison)
-- [ ] Data format meets expectations
-- [ ] Indexes correctly established
-- [ ] New features run normally
-- [ ] Old data compatibility verification passed
-- [ ] Rollback script test successful
-
-##### 4. Production Implementation Phase
-
-**Timing**: Confirm with operations before release day
-
-**Operation Steps**:
-
-1. **Confirm implementation time with operations**
-   - Determine migration window (avoid business peak hours)
-   - Confirm if downtime maintenance needed
-   - Notify relevant parties (product, customer service, etc.)
-
-2. **Preparation**
-   - Backup production data
-   - Prepare monitoring scripts
-   - Prepare rollback scripts
-   - Prepare contingency plan
-
-3. **Execute Migration**
-   - Execute according to established plan
-   - Real-time monitor migration progress
-   - Record detailed logs
-
-4. **Verification and Monitoring**
-   - Verify data migration results
-   - Monitor service running status
-   - Observe performance metrics
-   - Collect user feedback
-
-##### 5. Follow-up Tracking
-
-**Timing**: 1-3 days after launch
-
-**Operation Steps**:
-- Continuously monitor data and service status
-- Handle remaining issues
-- Summarize migration experience
-- Update documentation
+- **Time window**: Need sufficient time for data migration and verification
+- **Multi-team collaboration**: Involves development, testing, operations multiple teams
 
 #### Common Scenario Examples
 
 | Scenario | Early Communication Time | Key Discussion Points |
-|------|--------------|------------|
-| **Add Field** | Early development (1-2 weeks before) | Default value strategy, index establishment, whether need to backfill historical data |
-| **Field Type Change** | Solution design stage (2-3 weeks before) | Data conversion rules, incompatible data handling, rollback solution |
-| **Large-scale Data Fix** | Solution design stage (2-4 weeks before) | Data volume assessment, migration duration, batch strategy, downtime plan |
-| **Index Rebuild** | Solution design stage (1-2 weeks before) | Performance impact, execution time window, online/offline method |
-| **Data Archive/Cleanup** | Solution design stage (2-3 weeks before) | Archive strategy, data backup, recovery mechanism |
+|----------|-------------------------|----------------------|
+| **Add new field** | Early development (1-2 weeks) | Default value strategy, index creation, whether to backfill historical data |
+| **Field type change** | Design phase (2-3 weeks) | Data conversion rules, incompatible data handling, rollback plan |
+| **Large-scale data fix** | Design phase (2-4 weeks) | Data volume estimation, migration duration, batch strategy, downtime plan |
+| **Index rebuild** | Design phase (1-2 weeks) | Performance impact, execution time window, online/offline approach |
+| **Data archiving/cleanup** | Design phase (2-3 weeks) | Archiving strategy, data backup, recovery mechanism |
 
-#### Related Documentation
-
-- [MongoDB Migration Guide](./mongodb_migration_guide.md)
-- Data fix script directory: `src/devops_scripts/data_fix/`
-- Migration script directory: `src/migrations/`
-
-### Code Review Process
+### Code Review Flow
 
 #### Submitter Recommendations
 
 1. **Create Merge Request**
    - Fill in clear title and description
-   - Explain reason for change and impact scope
+   - Explain change reasons and impact scope
    - Link related Issues or requirements
 
-2. **Self-check Checklist**
+2. **Self-check list**
    - [ ] Code passes pre-commit checks
    - [ ] Related unit tests added/updated
    - [ ] Documentation updated (if necessary)
    - [ ] No obvious performance issues
    - [ ] No security risks
 
-3. **Assign Reviewers**
-   - Assign reviewers in Merge Request (see contacts at end of document)
-   - Clearly mark change type:
-     - 📊 Data change (Migration/data fix script)
-     - 📦 Dependency change (pyproject.toml/uv.lock)
-     - 🏗️ Infrastructure change (infra_layer/startup process)
-     - 🔀 Important branch merge (release/master/long)
+**Note**: Project has Code Owner mechanism configured, reviewers will be auto-assigned based on changed files, no need to manually specify.
 
 #### Reviewer Work
 
-1. **Code Quality Review**
+1. **Code quality review**
    - Code logic correctness
    - Code readability and maintainability
-   - Whether conforms to project standards
+   - Whether follows project standards
 
-2. **Risk Assessment**
-   - Data security risk (especially focus on data scripts)
+2. **Risk assessment**
+   - Data security risks (especially for data scripts)
    - Performance impact (async code, database queries)
    - Compatibility issues (dependency upgrades, API changes)
 
-3. **Review Feedback**
+3. **Review feedback**
    - Provide clear modification suggestions
    - Mark severity (Must Fix / Should Fix / Nice to Have)
-   - Timely response (within 24 hours if possible)
-
-### MR Description Template
-
-```markdown
-## Change Type
-- [ ] Feature (new feature)
-- [ ] Bugfix (bug fix)
-- [ ] Hotfix (emergency fix)
-- [ ] Refactor (refactoring)
-- [ ] 📊 Migration (data migration) - recommend Code Review
-- [ ] 📦 Dependency (dependency change) - recommend Code Review
-- [ ] 🏗️ Infrastructure (infrastructure change) - recommend Code Review
-
-## Reviewers
-<!-- Assign reviewers, see contact information at end of document -->
-
-## Change Description
-<!-- Briefly describe content and reason for this change -->
-
-## Impact Scope
-<!-- Explain affected modules, services or features -->
-
-## Testing Status
-- [ ] Code passes pre-commit checks
-- [ ] Unit tests passed
-- [ ] Integration tests passed
-- [ ] Manual testing completed
-
-## Risk Assessment
-<!-- If involving data/dependency/infrastructure changes, explain risks and rollback plan -->
-
-## Related Documentation
-<!-- Link to requirement documents, design documents or Issues -->
-
-## Screenshots/Logs
-<!-- If necessary, provide screenshots or key logs -->
-```
-
-### Which Changes Recommend Code Review?
-
-The following situations recommend creating MR and assigning reviewers:
-
-- 💾 **Data-related changes** (Migration, data fix scripts)
-- 📦 **Dependency package additions/deletions/modifications** (pyproject.toml, uv.lock)
-- 🏗️ **Infrastructure changes** (infra_layer, startup process)
-- 🔀 **Merge to release/xxx or master branch**
-- 🔀 **long/xxx long-term branch merge to dev**
-
-**Small features/small bugs merging to dev** can decide whether MR is needed on a case-by-case basis.
-
-### How to Submit Merge Request?
-
-```bash
-# 1. Push your branch to remote
-git push origin your-branch-name
-
-# 2. Create MR/PR on Git platform (GitLab/GitHub/Gitee)
-#    - Source branch: your-branch-name
-#    - Target branch: dev/release/master
-#    - Reviewers: see contacts at end of document
-#    - Use MR description template above to fill in detailed information
-
-# 3. Wait for review, modify code based on feedback
-git add .
-git commit -m "fix: modify xxx according to code review feedback"
-git push origin your-branch-name
-
-# 4. Merge after review approval
-#    - Merge after reviewer confirms
-#    - Or merge yourself and notify relevant personnel
-```
+   - Respond promptly (try within 24 hours)
 
 ---
 
@@ -2041,21 +1577,21 @@ git push origin your-branch-name
 - [Getting Started Guide](./getting_started.md)
 - [Development Guide](./development_guide.md)
 - [Dependency Management Guide](./project_deps_manage.md)
-- [Bootstrap Usage Instructions](./bootstrap_usage.md)
+- [Bootstrap Usage Guide](./bootstrap_usage.md)
 - [MongoDB Migration Guide](./mongodb_migration_guide.md)
 
 ---
 
 ## ❓ FAQ
 
-### Q1: What if I forgot to install pre-commit hook?
+### Q1: Forgot to install pre-commit hook?
 
 ```bash
 pre-commit install
-pre-commit run --all-files  # Run checks on existing code
+pre-commit run --all-files  # Run check on existing code
 ```
 
-### Q2: What if I accidentally installed a package with pip?
+### Q2: Accidentally installed package with pip?
 
 ```bash
 # 1. Uninstall package installed with pip
@@ -2068,7 +1604,7 @@ uv add <package-name>
 uv sync
 ```
 
-### Q3: What to do with branch merge conflicts?
+### Q3: Branch merge conflict?
 
 ```bash
 # 1. Ensure local branch is up to date
@@ -2078,7 +1614,7 @@ git pull origin your-branch
 # 2. Merge target branch
 git merge target-branch
 
-# 3. Commit after resolving conflicts
+# 3. After resolving conflicts, commit
 git add .
 git commit -m "merge: resolve conflicts with target-branch"
 ```
@@ -2107,25 +1643,25 @@ async def use_sync_library():
 
 For the following matters, recommend communicating with development lead:
 
-- Thread/process usage solution discussion
+- Thread/process usage plan discussion
 - PYTHONPATH path configuration changes
-- Code Review requests
-- Technical solutions for data scripts, dependency changes, infrastructure modifications
+- Code Review review requests
+- Technical plans for data scripts, dependency changes, infrastructure changes
 
-**Current Lead**: zhanghui
+**Current lead**: zhanghui
 
 ### Operations Lead
 
-For the following matters, please contact operations lead:
+For the following matters, contact operations lead:
 
-- Obtain development environment configuration (database, middleware connection information)
-- Service access permission application
-- Environment configuration problem troubleshooting
-- New configuration items or environment requirements
+- Development environment configuration (database, middleware connection info)
+- Service access permission requests
+- Environment configuration troubleshooting
+- New configuration items or environment needs
 - Network connection, VPN and other infrastructure issues
 
-**Current Lead**: jianhua
+**Current lead**: jianhua
 
 ---
 
-**Last Updated**: 2025-10-31
+**Last updated**: 2025-10-31
