@@ -8,11 +8,12 @@ from memory_layer.memory_manager import MemoryManager
 from api_specs.memory_types import (
     MemoryType,
     MemCell,
-    Memory,
+    BaseMemory,
+    EpisodeMemory,
     RawDataType,
-    ForesightItem,
+    Foresight,
 )
-from memory_layer.memory_extractor.event_log_extractor import EventLog
+from api_specs.memory_types import EventLog
 from memory_layer.memory_extractor.profile_memory_extractor import ProfileMemory
 from core.di import get_bean_by_type
 from infra_layer.adapters.out.persistence.repository.episodic_memory_raw_repository import (
@@ -104,36 +105,6 @@ class MemoryDocPayload:
     doc: Any
 
 
-def _clone_foresight_item(raw_item: Any) -> Optional[ForesightItem]:
-    """Convert any structured foresight item into a ForesightItem instance"""
-    if raw_item is None:
-        return None
-
-    if isinstance(raw_item, ForesightItem):
-        return ForesightItem(
-            content=raw_item.content,
-            evidence=getattr(raw_item, "evidence", None),
-            start_time=getattr(raw_item, "start_time", None),
-            end_time=getattr(raw_item, "end_time", None),
-            duration_days=getattr(raw_item, "duration_days", None),
-            source_episode_id=getattr(raw_item, "source_episode_id", None),
-            vector=getattr(raw_item, "vector", None),
-            vector_model=getattr(raw_item, "vector_model", None),
-        )
-
-    if isinstance(raw_item, dict):
-        return ForesightItem(
-            content=raw_item.get("content", ""),
-            evidence=raw_item.get("evidence"),
-            start_time=raw_item.get("start_time"),
-            end_time=raw_item.get("end_time"),
-            duration_days=raw_item.get("duration_days"),
-            source_episode_id=raw_item.get("source_episode_id"),
-            vector=raw_item.get("vector"),
-            vector_model=raw_item.get("vector_model"),
-        )
-
-    return None
 
 
 def _clone_event_log(raw_event_log: Any) -> Optional[EventLog]:
@@ -477,9 +448,9 @@ class ExtractionState:
     scene: str
     is_assistant_scene: bool
     participants: List[str]
-    group_episode: Optional[Memory] = None
-    group_episode_memories: List[Memory] = None
-    episode_memories: List[Memory] = None
+    group_episode: Optional[EpisodeMemory] = None
+    group_episode_memories: List[EpisodeMemory] = None
+    episode_memories: List[EpisodeMemory] = None
     parent_docs_map: Dict[str, Any] = None
 
     def __post_init__(self):
@@ -676,7 +647,7 @@ async def _process_memories(state: ExtractionState, memory_manager: MemoryManage
     )
 
 
-def _clone_episodes_for_users(state: ExtractionState) -> List[Memory]:
+def _clone_episodes_for_users(state: ExtractionState) -> List[EpisodeMemory]:
     """Copy group Episode to each user"""
     from dataclasses import replace
 
@@ -692,8 +663,8 @@ def _clone_episodes_for_users(state: ExtractionState) -> List[Memory]:
 
 async def _save_episodes(
     state: ExtractionState,
-    episodes_to_save: List[Memory],
-    episodic_source: List[Memory],
+    episodes_to_save: List[EpisodeMemory],
+    episodic_source: List[EpisodeMemory],
 ):
     """Save Episodes to database"""
     for ep in episodes_to_save:
@@ -716,8 +687,8 @@ async def _save_episodes(
 
 
 async def _extract_foresight_and_eventlog(
-    state: ExtractionState, memory_manager: MemoryManager, episodic_source: List[Memory]
-) -> Tuple[List[ForesightItem], List[EventLog]]:
+    state: ExtractionState, memory_manager: MemoryManager, episodic_source: List[EpisodeMemory]
+) -> Tuple[List[Foresight], List[EventLog]]:
     """Extract Foresight and EventLog"""
     logger.info(
         f"[MemCell Processing] Extracting Foresight/EventLog, total {len(episodic_source)} Episodes"
@@ -763,14 +734,14 @@ async def _extract_foresight_and_eventlog(
         ep = meta['ep']
         if meta['type'] == MemoryType.FORESIGHT:
             for mem in result:
-                mem.parent_event_id = ep.event_id
+                mem.parent_episode_id = ep.event_id
                 mem.user_id = ep.user_id
                 mem.group_id = ep.group_id
                 mem.group_name = ep.group_name
                 mem.user_name = ep.user_name
                 foresight_memories.append(mem)
         elif meta['type'] == MemoryType.EVENT_LOG:
-            result.parent_event_id = ep.event_id
+            result.parent_episode_id = ep.event_id
             result.user_id = ep.user_id
             result.group_id = ep.group_id
             result.group_name = ep.group_name
@@ -782,13 +753,13 @@ async def _extract_foresight_and_eventlog(
 
 async def _save_foresight_and_eventlog(
     state: ExtractionState,
-    foresight_memories: List[ForesightItem],
+    foresight_memories: List[Foresight],
     event_logs: List[EventLog],
 ):
     """Save Foresight and EventLog"""
     foresight_docs = []
     for mem in foresight_memories:
-        parent_doc = state.parent_docs_map.get(str(mem.parent_event_id))
+        parent_doc = state.parent_docs_map.get(str(mem.parent_episode_id))
         if parent_doc:
             foresight_docs.append(
                 _convert_foresight_to_doc(mem, parent_doc, state.current_time)
@@ -796,7 +767,7 @@ async def _save_foresight_and_eventlog(
 
     event_log_docs = []
     for el in event_logs:
-        parent_doc = state.parent_docs_map.get(str(el.parent_event_id))
+        parent_doc = state.parent_docs_map.get(str(el.parent_episode_id))
         if parent_doc:
             event_log_docs.extend(
                 _convert_event_log_to_docs(el, parent_doc, state.current_time)
