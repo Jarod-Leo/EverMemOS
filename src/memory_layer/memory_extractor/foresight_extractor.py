@@ -97,7 +97,7 @@ class ForesightExtractor(MemoryExtractor):
 
                 # Build prompt
                 prompt = get_group_foresight_generation_prompt(
-                    memcell_summary=memcell.summary,
+                    memcell_summary=memcell.summary or "",
                     memcell_episode=memcell.episode or "",
                     user_ids=memcell.user_id_list,
                 )

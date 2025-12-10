@@ -82,7 +82,10 @@ class MemCell(DocumentBase, AuditBase):
         description="User ID, core query field. None for group memory, user ID for personal memory",
     )
     timestamp: Indexed(datetime) = Field(..., description="Occurrence time, shard key")
-    summary: str = Field(..., min_length=1, description="Memory unit summary")
+    summary: Optional[str] = Field(
+        default=None,
+        description="Memory unit summary, can be empty for force-split memcells",
+    )
 
     # Optional fields
     group_id: Optional[Indexed(str)] = Field(

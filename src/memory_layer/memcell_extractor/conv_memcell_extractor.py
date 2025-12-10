@@ -7,12 +7,13 @@ boundaries in various types of content (conversations, emails, notes, etc.).
 
 import time
 import os
-from typing import Dict, Any, Optional, List, Tuple
+from typing import Dict, Any, Optional, List, Tuple, ClassVar
 from datetime import datetime
 from dataclasses import dataclass
 import uuid
 import json, re
 import asyncio
+import tiktoken
 from common_utils.datetime_utils import (
     from_iso_format as dt_from_iso_format,
     from_timestamp as dt_from_timestamp,
@@ -68,10 +69,34 @@ class ConvMemCellExtractor(MemCellExtractor):
     - Embedding computation (handled by MemoryManager)
     """
 
-    def __init__(self, llm_provider=LLMProvider, use_eval_prompts: bool = False):
+    # Class variable: shared tokenizer across all instances (lazy loaded)
+    _tokenizer: ClassVar[Optional[tiktoken.Encoding]] = None
+
+    # Default limits for force splitting
+    DEFAULT_HARD_TOKEN_LIMIT = 8192
+    DEFAULT_HARD_MESSAGE_LIMIT = 100
+
+    @classmethod
+    def _get_tokenizer(cls) -> tiktoken.Encoding:
+        """Get or create the shared tokenizer (lazy loading, only once)."""
+        if cls._tokenizer is None:
+            cls._tokenizer = tiktoken.get_encoding("o200k_base")
+        return cls._tokenizer
+
+    def __init__(
+        self,
+        llm_provider=LLMProvider,
+        use_eval_prompts: bool = False,
+        hard_token_limit: Optional[int] = None,
+        hard_message_limit: Optional[int] = None,
+    ):
         super().__init__(RawDataType.CONVERSATION, llm_provider)
         self.llm_provider = llm_provider
         self.use_eval_prompts = use_eval_prompts
+
+        # Force split limits
+        self.hard_token_limit = hard_token_limit or self.DEFAULT_HARD_TOKEN_LIMIT
+        self.hard_message_limit = hard_message_limit or self.DEFAULT_HARD_MESSAGE_LIMIT
 
         if use_eval_prompts:
             self.conv_boundary_detection_prompt = EVAL_CONV_BOUNDARY_DETECTION_PROMPT
@@ -81,6 +106,31 @@ class ConvMemCellExtractor(MemCellExtractor):
     def shutdown(self) -> None:
         """Cleanup resources."""
         pass
+
+    def _count_tokens(self, messages: List[Dict[str, Any]]) -> int:
+        """
+        Count total tokens in message list using tiktoken.
+
+        Includes speaker_name in token count since it's included when passed to LLM.
+
+        Args:
+            messages: List of message dictionaries
+
+        Returns:
+            Total token count
+        """
+        tokenizer = self._get_tokenizer()
+        total = 0
+        for msg in messages:
+            if isinstance(msg, dict):
+                speaker = msg.get('speaker_name', '')
+                content = msg.get('content', '')
+                # Format matches what's sent to LLM: "speaker: content"
+                text = f"{speaker}: {content}" if speaker else content
+            else:
+                text = str(msg)
+            total += len(tokenizer.encode(text))
+        return total
 
     def _extract_participant_ids(
         self, chat_raw_data_list: List[Dict[str, Any]]
@@ -279,19 +329,28 @@ class ConvMemCellExtractor(MemCellExtractor):
                         topic_summary=data.get("topic_summary", ""),
                     )
                 else:
-                    return BoundaryDetectionResult(
-                        should_end=False,
-                        should_wait=True,
-                        reasoning="Failed to parse LLM response",
-                        confidence=1.0,
-                        topic_summary="",
+                    # JSON parsing failed, retry
+                    logger.warning(
+                        f"[ConversationEpisodeBuilder] Failed to parse JSON from LLM response (attempt {i+1}/5), response: {resp[:200]}..."
                     )
-                break
+                    continue
             except Exception as e:
-                print('retry: ', i)
-                if i == 4:
-                    raise Exception("Boundary detection failed")
+                logger.warning(
+                    f"[ConversationEpisodeBuilder] Boundary detection error (attempt {i+1}/5): {e}"
+                )
                 continue
+
+        # All retries exhausted, return default result
+        logger.error(
+            f"[ConversationEpisodeBuilder] All 5 retries exhausted for boundary detection, returning default (should_end=False)"
+        )
+        return BoundaryDetectionResult(
+            should_end=False,
+            should_wait=True,
+            reasoning="All retries exhausted - failed to parse LLM response",
+            confidence=0.0,
+            topic_summary="",
+        )
 
     async def extract_memcell(
         self, request: ConversationMemCellExtractRequest
@@ -346,6 +405,58 @@ class ConvMemCellExtractor(MemCellExtractor):
             status_control_result = StatusResult(should_wait=True)
             return (None, status_control_result)
 
+        # === Force split check (token limit or message limit) ===
+        # Calculate tokens for history + new messages combined
+        accumulated_tokens = self._count_tokens(history_message_dict_list)
+        new_tokens = self._count_tokens(new_message_dict_list)
+        total_tokens = accumulated_tokens + new_tokens
+        total_messages = len(history_message_dict_list) + len(new_message_dict_list)
+
+        # Check if force split is needed (before calling LLM)
+        needs_force_split = (
+            total_tokens >= self.hard_token_limit
+            or total_messages >= self.hard_message_limit
+        )
+
+        if needs_force_split and len(history_message_dict_list) >= 2:
+            # Force split: create MemCell from history, new message starts next accumulation
+            logger.debug(
+                f"[ConvMemCellExtractor] Force split triggered: "
+                f"tokens={total_tokens}/{self.hard_token_limit}, "
+                f"messages={total_messages}/{self.hard_message_limit}"
+            )
+
+            # Parse timestamp from last history message
+            ts_value = history_message_dict_list[-1].get("timestamp")
+            timestamp = dt_from_iso_format(ts_value)
+            participants = self._extract_participant_ids(history_message_dict_list)
+
+            memcell = MemCell(
+                user_id_list=request.user_id_list,
+                original_data=history_message_dict_list,
+                timestamp=timestamp,
+                summary="",  # Empty summary for force split, will be filled by episode extractor
+                group_id=request.group_id,
+                participants=participants,
+                type=self.raw_data_type,
+            )
+
+            logger.debug(
+                f"✅ Force split MemCell created: event_id={memcell.event_id}, "
+                f"messages={len(history_message_dict_list)}, tokens={accumulated_tokens}"
+            )
+
+            return (memcell, StatusResult(should_wait=False))
+
+        elif needs_force_split:
+            # Needs split but not enough messages (single long message case)
+            # Don't split, just log warning and continue normal flow
+            logger.debug(
+                f"[ConvMemCellExtractor] Exceeds limits but only {len(history_message_dict_list)} history messages, "
+                f"not splitting single message. tokens={total_tokens}, messages={total_messages}"
+            )
+
+        # === Normal LLM-based boundary detection ===
         if request.smart_mask_flag:
             boundary_detection_result = await self._detect_boundary(
                 conversation_history=history_message_dict_list[:-1],
