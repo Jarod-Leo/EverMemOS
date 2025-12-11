@@ -75,9 +75,7 @@ class EverMemOSAdapter(BaseAdapter):
         )
 
         # Initialize Event Log Extractor
-        self.event_log_extractor = EventLogExtractor(
-            llm_provider=self.llm_provider,
-        )
+        self.event_log_extractor = EventLogExtractor(llm_provider=self.llm_provider)
 
         # Ensure NLTK data is available
         stage2_index_building.ensure_nltk_data()
@@ -657,11 +655,13 @@ class EverMemOSAdapter(BaseAdapter):
         if "mode" in search_config:
             exp_config.retrieval_mode = search_config["mode"]
             exp_config.use_agentic_retrieval = exp_config.retrieval_mode == "agentic"
-        
+
         # Map lightweight_search_mode (controls search method in lightweight mode)
         # Options: "bm25_only" | "hybrid" | "emb_only"
         if "lightweight_search_mode" in search_config:
-            exp_config.lightweight_search_mode = search_config["lightweight_search_mode"]
+            exp_config.lightweight_search_mode = search_config[
+                "lightweight_search_mode"
+            ]
 
         return exp_config
 

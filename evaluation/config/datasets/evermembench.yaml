@@ -4,6 +4,9 @@ name: "evermembench"
 version: "1.0"
 description: "Long-Context Modeling benchmark for conversational memory"
 
+# Memory language setting (overrides MEMORY_LANGUAGE env var)
+memory_language: "en"
+
 # Data configuration
 data:
   path: "evermembench/evermembench.json"  # Fixed format to match PersonaMem

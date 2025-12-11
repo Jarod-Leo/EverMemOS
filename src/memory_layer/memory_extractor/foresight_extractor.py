@@ -9,8 +9,17 @@ from datetime import datetime, timedelta
 
 from memory_layer.prompts import get_prompt_by
 from memory_layer.llm.llm_provider import LLMProvider
-from memory_layer.memory_extractor.base_memory_extractor import MemoryExtractor, MemoryExtractRequest
-from api_specs.memory_types import MemoryType, MemCell, Foresight, BaseMemory, EpisodeMemory
+from memory_layer.memory_extractor.base_memory_extractor import (
+    MemoryExtractor,
+    MemoryExtractRequest,
+)
+from api_specs.memory_types import (
+    MemoryType,
+    MemCell,
+    Foresight,
+    BaseMemory,
+    EpisodeMemory,
+)
 from agentic_layer.vectorize_service import get_vectorize_service
 from core.observation.logger import get_logger
 from common_utils.datetime_utils import get_now_with_timezone
@@ -48,7 +57,9 @@ class ForesightExtractor(MemoryExtractor):
 
         logger.info("Foresight extractor initialized (associative prediction mode)")
 
-    async def extract_memory(self, request: MemoryExtractRequest) -> Optional[BaseMemory]:
+    async def extract_memory(
+        self, request: MemoryExtractRequest
+    ) -> Optional[BaseMemory]:
         """
         Implement abstract base class required extract_memory method
 
@@ -93,9 +104,11 @@ class ForesightExtractor(MemoryExtractor):
                     )
 
                 # Build prompt (get function type prompt via PromptManager)
-                get_group_foresight_generation_prompt = get_prompt_by("get_group_foresight_generation_prompt")
+                get_group_foresight_generation_prompt = get_prompt_by(
+                    "get_group_foresight_generation_prompt"
+                )
                 prompt = get_group_foresight_generation_prompt(
-                    memcell_summary=memcell.summary,
+                    memcell_summary=memcell.summary or "",
                     memcell_episode=memcell.episode or "",
                     user_ids=memcell.user_id_list,
                 )
@@ -171,13 +184,19 @@ class ForesightExtractor(MemoryExtractor):
         for retry in range(5):
             try:
                 if retry == 0:
-                    logger.info(f"🎯 Generating foresight associations for EpisodeMemory: {episode.subject}")
+                    logger.info(
+                        f"🎯 Generating foresight associations for EpisodeMemory: {episode.subject}"
+                    )
                 else:
-                    logger.info(f"🎯 Generating foresight associations for EpisodeMemory: {episode.subject}, retry {retry+1}/5")
+                    logger.info(
+                        f"🎯 Generating foresight associations for EpisodeMemory: {episode.subject}, retry {retry+1}/5"
+                    )
 
                 # Build prompt (get function type prompt via PromptManager)
                 # Directly use episode's user_id
-                get_foresight_generation_prompt = get_prompt_by("get_foresight_generation_prompt")
+                get_foresight_generation_prompt = get_prompt_by(
+                    "get_foresight_generation_prompt"
+                )
                 prompt = get_foresight_generation_prompt(
                     episode_memory=episode.summary or "",
                     episode_content=episode.episode or "",

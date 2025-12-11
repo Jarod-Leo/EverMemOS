@@ -33,19 +33,15 @@ from memory_layer.memcell_extractor.conv_memcell_extractor import (
 from memory_layer.memory_extractor.episode_memory_extractor import (
     EpisodeMemoryExtractor,
 )
-# 评估专用的检索优化版本 prompts
+
 from memory_layer.prompts.en.episode_mem_prompts import (
     EPISODE_GENERATION_PROMPT_R,
     GROUP_EPISODE_GENERATION_PROMPT_R,
     DEFAULT_CUSTOM_INSTRUCTIONS_R,
 )
-from memory_layer.memory_extractor.base_memory_extractor import (
-    MemoryExtractRequest,
-)
+from memory_layer.memory_extractor.base_memory_extractor import MemoryExtractRequest
 from memory_layer.memory_extractor.event_log_extractor import EventLogExtractor
-from memory_layer.memory_extractor.foresight_extractor import (
-    ForesightExtractor,
-)
+from memory_layer.memory_extractor.foresight_extractor import ForesightExtractor
 from api_specs.memory_types import RawDataType
 
 # Clustering and Profile management components
@@ -67,6 +63,7 @@ from evaluation.src.adapters.evermemos.tools import (
 )
 
 from evaluation.src.adapters.evermemos.config import ExperimentConfig
+from core.oxm.mongo.mongo_utils import generate_object_id_str
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -179,10 +176,10 @@ async def _extract_all_memories_for_memcell(
 ):
     """
     Extract all memories for a MemCell in serial
-    
+
     Process: Episode → Foresight (optional)
     Note: EventLog is processed concurrently because it needs all MemCells to be collected before processing
-    
+
     Args:
         memcell: MemCell to extract memories from
         speakers: Conversation participants
@@ -197,24 +194,28 @@ async def _extract_all_memories_for_memcell(
         participants=list(speakers),
         group_id=None,
     )
-    
+
     episode_memory = await episode_extractor.extract_memory(episode_request)
-    
+
     if episode_memory and episode_memory.episode:
         memcell.episode = episode_memory.episode
         memcell.subject = episode_memory.subject if episode_memory.subject else ""
         memcell.summary = episode_memory.episode[:200] + "..."
-        
+
         # 2. Extract Foresight (optional)
         if foresight_extractor:
-            foresight_memories = await foresight_extractor.generate_foresight_memories_for_episode(
-                episode_memory,
+            foresight_memories = (
+                await foresight_extractor.generate_foresight_memories_for_episode(
+                    episode_memory
+                )
             )
             if foresight_memories:
                 memcell.foresight_memories = foresight_memories
     else:
         # Episode extraction failed - raise exception, don't hide errors
-        raise ValueError(f"❌ Episode extraction failed! conv_id={conv_id}, memcell_id={memcell.event_id}")
+        raise ValueError(
+            f"❌ Episode extraction failed! conv_id={conv_id}, memcell_id={memcell.event_id}"
+        )
 
 
 async def memcell_extraction_from_conversation(
@@ -238,7 +239,7 @@ async def memcell_extraction_from_conversation(
     foresight_extractor = None
     if enable_foresight_extraction:
         foresight_extractor = ForesightExtractor(llm_provider=llm_provider)
-    
+
     memcell_list = []
     speakers = {
         raw_data.content["speaker_id"]
@@ -281,11 +282,15 @@ async def memcell_extraction_from_conversation(
         if memcell_result is None:
             history_raw_data_list.append(raw_data)
         elif isinstance(memcell_result, MemCell):
+            # [Evaluation Only] Generate event_id (in production, MongoDB generates it)
+            if memcell_result.event_id is None:
+                memcell_result.event_id = generate_object_id_str()
+
             if smart_mask_flag:
                 history_raw_data_list = [history_raw_data_list[-1], raw_data]
             else:
                 history_raw_data_list = [raw_data]
-            
+
             # ✅ Serial extraction: detect boundary, immediately extract all memories for this MemCell
             # This allows Clustering and Profile to immediately use the complete MemCell
             await _extract_all_memories_for_memcell(
@@ -295,7 +300,7 @@ async def memcell_extraction_from_conversation(
                 foresight_extractor=foresight_extractor,
                 conv_id=conv_id,
             )
-            
+
             memcell_list.append(memcell_result)
         else:
             console = Console()
@@ -316,13 +321,16 @@ async def memcell_extraction_from_conversation(
             # Fallback: use the last raw data's timestamp if memcell_list is empty
             # RawData.content["timestamp"] is ISO format string, guaranteed by raw_data_load
             last_raw_data = history_raw_data_list[-1]
-            if isinstance(last_raw_data.content, dict) and "timestamp" in last_raw_data.content:
+            if (
+                isinstance(last_raw_data.content, dict)
+                and "timestamp" in last_raw_data.content
+            ):
                 # Convert ISO format string to datetime
                 last_timestamp = from_iso_format(last_raw_data.content["timestamp"])
             else:
                 # Defensive fallback (should not happen after raw_data_load fix)
                 last_timestamp = get_now_with_timezone()
-        
+
         memcell = MemCell(
             type=RawDataType.CONVERSATION,
             user_id_list=list(speakers),
@@ -330,11 +338,14 @@ async def memcell_extraction_from_conversation(
             timestamp=last_timestamp,
             summary="Final segment",
         )
+        # [Evaluation Only] Generate event_id (in production, MongoDB generates it)
+        memcell.event_id = generate_object_id_str()
+
         original_data_list = []
         for raw_data in history_raw_data_list:
             original_data_list.append(memcell_extractor._data_process(raw_data))
         memcell.original_data = original_data_list
-        
+
         # Serial extraction of all memories for the last MemCell
         await _extract_all_memories_for_memcell(
             memcell=memcell,
@@ -343,7 +354,7 @@ async def memcell_extraction_from_conversation(
             foresight_extractor=foresight_extractor,
             conv_id=conv_id,
         )
-        
+
         memcell_list.append(memcell)
 
     return memcell_list
@@ -388,9 +399,7 @@ async def process_single_conversation(
 
     # Create MemCellExtractor
     raw_data_list = convert_conversation_to_raw_data_list(conversation)
-    memcell_extractor = ConvMemCellExtractor(
-        llm_provider=llm_provider,
-    )
+    memcell_extractor = ConvMemCellExtractor(llm_provider=llm_provider)
 
     # Conditional creation: Cluster manager (per-conversation)
     if config and config.enable_clustering:
@@ -441,7 +450,9 @@ async def process_single_conversation(
         conv_id=conv_id,
         progress=progress,
         task_id=task_id,
-        enable_foresight_extraction=config.enable_foresight_extraction if config else False,
+        enable_foresight_extraction=(
+            config.enable_foresight_extraction if config else False
+        ),
     )
 
     # Convert timestamps to datetime objects before saving
@@ -460,8 +471,8 @@ async def process_single_conversation(
         memcells_with_episode = [
             (idx, memcell)
             for idx, memcell in enumerate(memcell_list)
-            if hasattr(memcell, 'episode') 
-            and memcell.episode 
+            if hasattr(memcell, 'episode')
+            and memcell.episode
             and memcell.episode != "Episode extraction failed"
         ]
 
@@ -477,7 +488,9 @@ async def process_single_conversation(
             async with sem:
                 return await extract_single_event_log(idx, memcell)
 
-        print(f"\n🔥 Starting concurrent extraction of {len(memcells_with_episode)} event logs...")
+        print(
+            f"\n🔥 Starting concurrent extraction of {len(memcells_with_episode)} event logs..."
+        )
         event_log_tasks = [
             extract_with_semaphore(idx, memcell)
             for idx, memcell in memcells_with_episode
@@ -488,7 +501,9 @@ async def process_single_conversation(
             if event_log:
                 memcell_list[original_idx].event_log = event_log
 
-        print(f"✅ Event log extraction complete: {sum(1 for _, el in event_log_results if el)}/{len(event_log_results)} succeeded")
+        print(
+            f"✅ Event log extraction complete: {sum(1 for _, el in event_log_results if el)}/{len(event_log_results)} succeeded"
+        )
 
     # Save single conversation results
     memcell_dicts = []
@@ -511,22 +526,29 @@ async def process_single_conversation(
             cluster_id, cluster_state = await cluster_mgr.cluster_memcell(
                 memcell_dict, cluster_state
             )
-        
+
         # Save cluster state
         await cluster_storage.save_cluster_state(group_id, cluster_state.to_dict())
-        
+
         # Export clustering results
         cluster_output_dir = Path(save_dir) / "clusters" / f"conv_{conv_id}"
         cluster_output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         state_file = cluster_output_dir / f"cluster_state_{group_id}.json"
         with open(state_file, "w", encoding="utf-8") as f:
-            json.dump(cluster_state.to_dict(), f, ensure_ascii=False, indent=2, default=str)
-        
+            json.dump(
+                cluster_state.to_dict(), f, ensure_ascii=False, indent=2, default=str
+            )
+
         assignments_file = cluster_output_dir / f"cluster_map_{group_id}.json"
         with open(assignments_file, "w", encoding="utf-8") as f:
-            json.dump({"assignments": cluster_state.eventid_to_cluster}, f, ensure_ascii=False, indent=2)
-        
+            json.dump(
+                {"assignments": cluster_state.eventid_to_cluster},
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+
         cluster_stats = cluster_mgr.get_stats()
 
     # Profile extraction: after all memcells processed
@@ -538,35 +560,35 @@ async def process_single_conversation(
             if hasattr(memcell, 'user_id_list'):
                 user_id_set.update(memcell.user_id_list or [])
         user_id_list = list(user_id_set)
-        
+
         old_profiles_dict = await profile_storage.get_all_profiles()
         old_profiles = list(old_profiles_dict.values())
-        
+
         new_profiles = await profile_mgr.extract_profiles(
             memcells=memcell_list,  # Pass MemCell objects, not dictionaries
             old_profiles=old_profiles,
             user_id_list=user_id_list,
         )
-        
+
         group_id = f"locomo_conv_{conv_id}"
         for profile in new_profiles:
             if isinstance(profile, dict):
                 user_id = profile.get('user_id')
             else:
                 user_id = getattr(profile, 'user_id', None)
-            
+
             if user_id:
                 await profile_storage.save_profile(
-                    user_id, 
+                    user_id,
                     profile,
                     metadata={
                         "group_id": group_id,
                         "scenario": config.profile_scenario if config else "assistant",
                         "memcell_count": len(memcell_list),
-                    }
+                    },
                 )
                 profile_count += 1
-        
+
         profile_stats = profile_mgr.get_stats()
 
     # Save statistics
@@ -717,9 +739,7 @@ async def main():
 
     # Create shared Event Log Extractor
     console.print("⚙️ Initializing Event Log Extractor...", style="yellow")
-    shared_event_log_extractor = EventLogExtractor(
-        llm_provider=shared_llm_provider,
-    )
+    shared_event_log_extractor = EventLogExtractor(llm_provider=shared_llm_provider)
 
     # 🔥 Use pending conversation dict (checkpoint resume)
     # Create progress counter

@@ -4,6 +4,9 @@ name: "personamem"
 version: "1.0"
 description: "Persona Memory benchmark for long-context personalization"
 
+# Memory language setting (overrides MEMORY_LANGUAGE env var)
+memory_language: "en"
+
 # Data configuration
 data:
   path: "personamem"  # Directory containing raw and converted files

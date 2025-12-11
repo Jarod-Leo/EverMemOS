@@ -4,6 +4,9 @@ name: "longmemeval"
 version: "1.0"
 description: "Long-term Memory Evaluation benchmark"
 
+# Memory language setting (overrides MEMORY_LANGUAGE env var)
+memory_language: "en"
+
 # Data configuration
 data:
   path: "longmemeval"  # Directory containing raw and converted files
