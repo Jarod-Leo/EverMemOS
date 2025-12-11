@@ -74,7 +74,7 @@ class ConvMemCellExtractor(MemCellExtractor):
 
     # Default limits for force splitting
     DEFAULT_HARD_TOKEN_LIMIT = 8192
-    DEFAULT_HARD_MESSAGE_LIMIT = 100
+    DEFAULT_HARD_MESSAGE_LIMIT = 50
 
     @classmethod
     def _get_tokenizer(cls) -> tiktoken.Encoding:
