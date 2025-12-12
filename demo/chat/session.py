@@ -143,7 +143,7 @@ class ChatSession:
             error_msg = (
                 f"\n❌ Cannot connect to API server: {self.api_base_url}\n\n"
                 f"Please start V3 API server first:\n"
-                f"  uv run python src/run.py --port 8001\n\n"
+                f"  uv run python src/run.py\n\n"
                 f"Then run the chat application in another terminal.\n"
             )
             raise ConnectionError(error_msg) from e
@@ -308,7 +308,7 @@ class ChatSession:
             error_msg = "Request timeout (over 30s)"
             raise RuntimeError(error_msg)
         except httpx.ConnectError as e:
-            error_msg = f"Connection failed: Cannot connect to {self.api_base_url}\nPlease ensure V3 API service is started: uv run python src/bootstrap.py src/run.py --port 8001"
+            error_msg = f"Connection failed: Cannot connect to {self.api_base_url}\nPlease ensure V3 API service is started: uv run python src/bootstrap.py src/run.py"
             raise RuntimeError(error_msg) from e
         except Exception as e:
             error_msg = f"Retrieval failed: {type(e).__name__}: {e}"
@@ -371,7 +371,7 @@ class ChatSession:
             error_msg = "Request timeout (over 180s)\nHint: Agentic retrieval involves LLM calls and multi-round retrieval, taking longer\nSuggestion: Use RRF/Embedding/BM25 retrieval modes (faster)"
             raise RuntimeError(error_msg)
         except httpx.ConnectError as e:
-            error_msg = f"Connection failed: Cannot connect to {self.api_base_url}\nPlease ensure V3 API service is started: uv run python src/bootstrap.py src/run.py --port 8001"
+            error_msg = f"Connection failed: Cannot connect to {self.api_base_url}\nPlease ensure V3 API service is started: uv run python src/bootstrap.py src/run.py"
             raise RuntimeError(error_msg) from e
         except Exception as e:
             error_msg = f"Agentic retrieval failed: {type(e).__name__}: {e}"

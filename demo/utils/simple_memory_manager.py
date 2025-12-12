@@ -87,7 +87,7 @@ class SimpleMemoryManager:
         """Initialize the manager
 
         Args:
-            base_url: API server address (default: localhost:8001)
+            base_url: API server address (default: localhost:1995)
             group_id: Group ID (default: default_group)
             scene: Scene type (default: "assistant", options: "assistant" or "companion")
         """

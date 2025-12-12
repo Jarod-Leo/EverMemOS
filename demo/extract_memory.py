@@ -68,7 +68,7 @@ def prompt_clear_data() -> bool:
             print("Please enter Y (yes) or N (no)")
 
 
-async def test_v3_memorize_api():
+async def test_memorize_api():
     """Test V3 API /memorize endpoint (single message storage)"""
 
     # Ask user whether to clear existing data
@@ -76,8 +76,8 @@ async def test_v3_memorize_api():
     if should_clear:
         await clear_all_memories()
     
-    base_url = "http://localhost:8001" 
-    memorize_url = f"{base_url}/api/v3/agentic/memorize"
+    base_url = "http://localhost:1995" 
+    memorize_url = f"{base_url}/api/v1/memories"
     
     print("=" * 100)
     print("🧪 Testing V3 API HTTP Interface - Memory Storage")
@@ -156,7 +156,7 @@ async def test_v3_memorize_api():
             except httpx.ConnectError:
                 print(f"   ✗ Connection failed: Unable to connect to {base_url}")
                 print(f"      Ensure V3 API service is running:")
-                print(f"      uv run python src/bootstrap.py src/run.py --port 8001")
+                print(f"      uv run python src/bootstrap.py src/run.py")
                 return False
             except httpx.ReadTimeout:
                 print(f"   ⚠ Timeout: Processing exceeded 500s")

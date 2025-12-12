@@ -17,19 +17,20 @@ import asyncio
 import json
 import os
 from typing import Dict, Any
-
+import dotenv
+dotenv.load_dotenv()
 # Get language setting from environment variable
-MEMORY_LANGUAGE = os.getenv('MEMORY_LANGUAGE', 'zh').lower()
+MEMORY_LANGUAGE = os.getenv('MEMORY_LANGUAGE').lower()
 
 # Query words based on language setting
 QUERY_WORDS = {
     'zh': {'default': '我喜欢什么运动', 'travel': '旅游'},
-    'en': {'default': 'What sports do I like', 'travel': 'Where have I traveled'},
+    'en': {'default': 'What sports do I like', 'travel': 'travel'},
 }
 
 def get_query_word(key: str = 'default') -> str:
     """Get query word based on MEMORY_LANGUAGE setting"""
-    lang = MEMORY_LANGUAGE if MEMORY_LANGUAGE in QUERY_WORDS else 'zh'
+    lang = MEMORY_LANGUAGE
     return QUERY_WORDS[lang].get(key, QUERY_WORDS[lang]['default'])
 
 
