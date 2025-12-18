@@ -15,7 +15,7 @@ class LLMConfig:
     api_key: Optional[str] = field(default_factory=lambda: os.getenv("LLM_API_KEY"))
     base_url: Optional[str] = field(default_factory=lambda: os.getenv("LLM_BASE_URL"))
     temperature: float = 0.3
-    max_tokens: int = 16384
+    max_tokens: int = 2048
 
 
 @dataclass
