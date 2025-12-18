@@ -71,7 +71,7 @@ class EverMemOSAdapter(BaseAdapter):
             api_key=llm_config.get("api_key", ""),
             base_url=llm_config.get("base_url", "https://api.openai.com/v1"),
             temperature=llm_config.get("temperature", 0.3),
-            max_tokens=llm_config.get("max_tokens", 32768),
+            max_tokens=llm_config.get("max_tokens", 16384),
         )
 
         # Initialize Event Log Extractor
@@ -628,12 +628,12 @@ class EverMemOSAdapter(BaseAdapter):
         exp_config.llm_config = {
             provider: {
                 "llm_provider": provider,
-                "model": llm_cfg.get("model", "gpt-4o-mini"),
+                "model": llm_cfg.get("model", "Qwen/Qwen2.5-7B-Instruct-AWQ"),
                 "api_key": llm_cfg.get("api_key") or os.getenv("LLM_API_KEY", ""),
                 "base_url": llm_cfg.get("base_url")
-                or os.getenv("LLM_BASE_URL", "https://api.openai.com/v1"),
+                or os.getenv("LLM_BASE_URL", "http://192.168.111.4:8899/v1"),
                 "temperature": llm_cfg.get("temperature", 0.3),
-                "max_tokens": llm_cfg.get("max_tokens", 32768),
+                "max_tokens": llm_cfg.get("max_tokens", 16384),
             }
         }
 
