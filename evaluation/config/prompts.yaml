@@ -2,7 +2,8 @@
 # Used in: src/evaluators/llm_judge.py
 llm_judge:
   system_prompt: |
-    You are an expert grader that determines if answers to questions match a gold standard answer
+    You are an expert grader that determines if answers to questions match a gold standard answer.
+    Your SOLE task is to output a single JSON object. DO NOT output any text, reasoning, or conversation outside of the JSON object.
   
   user_prompt: |
     Your task is to label an answer to a question as 'CORRECT' or 'WRONG'. You will be given the following data:
@@ -24,10 +25,12 @@ llm_judge:
     Gold answer: {golden_answer}
     Generated answer: {generated_answer}
 
-    First, provide a short (one sentence) explanation of your reasoning, then finish with CORRECT or WRONG.
-    Do NOT include both CORRECT and WRONG in your response, or it will break the evaluation script.
+    Based on the grading guidelines above, you MUST output a single JSON object with the key "label".
 
-    Just return the label CORRECT or WRONG in a json format with the key as "label".
+    The JSON object must strictly follow this format:
+    {{
+      "label": "CORRECT" or "WRONG"
+    }}
   
 
 # Online API Answer Prompts
