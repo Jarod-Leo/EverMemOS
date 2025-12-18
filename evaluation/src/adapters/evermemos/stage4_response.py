@@ -134,8 +134,9 @@ async def locomo_response(
             result = await llm_provider.generate(
                 prompt=prompt,
                 temperature=0,
-                max_tokens=32768,
+                max_tokens=16384, # 将32768改为8192
             )
+            # TODO: 将硬编码改为配置文件注入
             
             # Safe parse FINAL ANSWER (avoid index out of range)
             if "FINAL ANSWER:" in result:
