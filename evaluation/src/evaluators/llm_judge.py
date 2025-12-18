@@ -249,6 +249,7 @@ class LLMJudge(BaseEvaluator):
             )
             
             content = response.choices[0].message.content
+            print(f"  [DEBUG] LLM Judge Raw Content: '{content}'") # 调试
             result = json.loads(content)
             label = result.get("label", "WRONG")
             
