@@ -78,16 +78,16 @@ class ExperimentConfig:
     llm_config: dict = {
         "openai": {
             "llm_provider": "openai",
-            "model": "openai/gpt-4.1-mini",
-            "base_url": "https://openrouter.ai/api/v1",
+            "model": "deepseek-v3.2",
+            "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
             "api_key": os.getenv("LLM_API_KEY"),
             "temperature": 0.3,
-            "max_tokens": 16384,
+            "max_tokens": 32768,
         },
         "vllm": {
             "llm_provider": "openai",
-            "model": "Qwen3-30B",
-            "base_url": "http://0.0.0.0:8000/v1",
+            "model": "Qwen/Qwen2.5-7B-Instruct-AWQ",
+            "base_url": "http://192.168.111.4:8899/v1",
             "api_key": "123",
             "temperature": 0,
             "max_tokens": 16384,
