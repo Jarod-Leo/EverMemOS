@@ -9,9 +9,11 @@ adapter: "evermemos"
 # LLM configuration
 llm:
   provider: "openai"
-  model: "openai/gpt-4.1-mini"
-  api_key: "${LLM_API_KEY}"
-  base_url: "${LLM_BASE_URL:https://openrouter.ai/api/v1}"
+  model: "deepseek-v3.2" #Qwen/Qwen2.5-7B-Instruct-AWQ"
+  api_key: "sk-f653945d68514f5aa5e7f6ddc7bc04fb"
+  base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+  # base_url: "${LLM_BASE_URL:http://192.168.111.4:8899/v1}"
+  max_tokens: 32768
 
 search:
   mode: "agentic"  # agentic | lightweight
