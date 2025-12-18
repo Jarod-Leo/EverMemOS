@@ -1147,7 +1147,7 @@ async def main():
             api_key=llm_config["api_key"],
             base_url=llm_config["base_url"],
             temperature=llm_config.get("temperature", 0.3),
-            max_tokens=llm_config.get("max_tokens", 32768),
+            max_tokens=llm_config.get("max_tokens", 16384), # 修改了默认的max_tokens数
         )
         print(f"✅ LLM Provider initialized for agentic retrieval")
         print(f"   Model: {llm_config['model']}")
