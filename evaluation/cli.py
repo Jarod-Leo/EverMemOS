@@ -243,7 +243,7 @@ async def main():
         api_key=llm_config.get("api_key"),
         base_url=llm_config.get("base_url"),
         temperature=llm_config.get("temperature", 0.0),
-        max_tokens=llm_config.get("max_tokens", 32768),
+        max_tokens=llm_config.get("max_tokens", 16384), # 将32768改为16384
     )
     console.print(f"  Created LLM provider: {llm_config.get('model')}")
 
