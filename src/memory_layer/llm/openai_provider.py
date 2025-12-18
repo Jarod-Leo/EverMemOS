@@ -20,7 +20,8 @@ from memory_layer.llm.protocol import LLMProvider, LLMError
 from core.observation.logger import get_logger
 
 logger = get_logger(__name__)
-
+## 如果是调用阿里云或者其他外部API Provider，将下面这里去注释，并在session.post那里添加proxy字段
+PROXY_URL = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
 
 class OpenAIProvider(LLMProvider):
     """
@@ -122,8 +123,8 @@ class OpenAIProvider(LLMProvider):
                 timeout = aiohttp.ClientTimeout(total=600)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.post(
-                        f"{self.base_url}/chat/completions", json=data, headers=headers
-                    ) as response:
+                        f"{self.base_url}/chat/completions", json=data, headers=headers, proxy=PROXY_URL
+                    ) as response: #proxy=PROXY_URL
                         chunks = []
                         async for chunk in response.content.iter_any():
                             chunks.append(chunk)
