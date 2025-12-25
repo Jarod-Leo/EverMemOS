@@ -58,6 +58,12 @@ class ChatSession:
         # API Configuration
         self.api_base_url = config.api_base_url
         self.retrieve_url = f"{self.api_base_url}/api/v1/memories/search"
+        self.memorize_url = f"{self.api_base_url}/api/v1/memories"
+        self.conversation_meta_url = f"{self.api_base_url}/api/v1/memories/conversation-meta"
+        
+        # Memory Storage State
+        self._message_counter: int = 0
+        self._conversation_meta_saved: bool = False
         
         # Last Retrieval Metadata
         self.last_retrieval_metadata: Optional[Dict[str, Any]] = None
@@ -218,6 +224,100 @@ class ChatSession:
 
         except Exception as e:
             print(f"[{self.texts.get('error_label')}] {e}")
+
+    async def _save_conversation_meta(self) -> bool:
+        """Save conversation metadata (called when storing the first message)
+        
+        Returns:
+            Success status
+        """
+        if self._conversation_meta_saved:
+            return True
+        
+        # Build conversation-meta request data
+        now = get_now_with_timezone()
+        conversation_meta_request = {
+            "version": "1.0.0",
+            "scene": self.scenario_type,
+            "scene_desc": {},
+            "name": f"Chat Session {self.group_id}",
+            "description": f"Chat with memory - {self.scenario_type} scenario",
+            "group_id": self.group_id,
+            "created_at": to_iso_format(now),
+            "default_timezone": "Asia/Shanghai",
+            "user_details": {
+                "User": {"full_name": "User", "role": "user", "extra": {}},
+                "Assistant": {"full_name": "AI Assistant", "role": "assistant", "extra": {}},
+            },
+            "tags": ["chat", self.scenario_type],
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    self.conversation_meta_url, json=conversation_meta_request
+                )
+                response.raise_for_status()
+                result = response.json()
+                
+                if result.get("status") == "ok":
+                    self._conversation_meta_saved = True
+                    return True
+                else:
+                    # Mark as saved even if failed to avoid retrying repeatedly
+                    self._conversation_meta_saved = True
+                    return False
+        
+        except Exception:
+            # Mark as saved even if failed to avoid retrying repeatedly
+            self._conversation_meta_saved = True
+            return False
+
+    async def _store_message(self, content: str, sender: str = "User") -> bool:
+        """Store a message to memory system
+        
+        Args:
+            content: Message content
+            sender: Sender name (default: "User")
+        
+        Returns:
+            Success status
+        """
+        # Save conversation-meta first when storing for the first time
+        if not self._conversation_meta_saved:
+            await self._save_conversation_meta()
+        
+        # Generate unique message ID
+        self._message_counter += 1
+        now = get_now_with_timezone()
+        message_id = f"msg_{self._message_counter}_{int(now.timestamp() * 1000)}"
+        
+        # Build message data
+        message_data = {
+            "message_id": message_id,
+            "create_time": to_iso_format(now),
+            "sender": sender,
+            "sender_name": sender,
+            "type": "text",
+            "content": content,
+            "group_id": self.group_id,
+            "group_name": f"Chat Session {self.group_id}",
+            "scene": self.scenario_type,
+        }
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(self.memorize_url, json=message_data)
+                response.raise_for_status()
+                result = response.json()
+                
+                if result.get("status") == "ok":
+                    return True
+                else:
+                    return False
+        
+        except Exception:
+            return False
 
     async def retrieve_memories(self, query: str) -> List[Dict[str, Any]]:
         """Retrieve relevant memories - via HTTP API call
@@ -518,6 +618,16 @@ class ChatSession:
             self.conversation_history = self.conversation_history[
                 -self.config.conversation_history_size :
             ]
+        
+        # Auto-store messages to memory system (non-blocking)
+        try:
+            # Store user message
+            await self._store_message(user_input, sender="User")
+            # Store assistant response
+            await self._store_message(assistant_response, sender="Assistant")
+        except Exception:
+            # Silently fail to not interrupt the chat flow
+            pass
 
         return assistant_response
 
