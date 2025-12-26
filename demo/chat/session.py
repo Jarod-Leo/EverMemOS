@@ -558,16 +558,20 @@ class ChatSession:
         # Retrieve Memories
         memories = await self.retrieve_memories(user_input)
 
+        # Determine how many memories to use (same as UI display count)
+        display_count = 5
+        memories_to_use = memories[:display_count]
+
         # Show Retrieval Results
-        if self.config.show_retrieved_memories and memories:
+        if self.config.show_retrieved_memories and memories_to_use:
             ChatUI.print_retrieved_memories(
-                memories[:5],
+                memories_to_use,
                 texts=self.texts,
                 retrieval_metadata=self.last_retrieval_metadata,
             )
 
-        # Build Prompt
-        messages = self.build_prompt(user_input, memories)
+        # Build Prompt (use same memories as displayed)
+        messages = self.build_prompt(user_input, memories_to_use)
 
         # Show Generation Progress
         ChatUI.print_generating_indicator(self.texts)
