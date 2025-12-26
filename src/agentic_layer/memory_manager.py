@@ -917,13 +917,17 @@ class MemoryManager:
                     'importance_evidence'
                 ] = group_importance_evidence
 
-        # Sort memories within each group by timestamp, and calculate importance score
+        # Sort memories within each group by relevance score (descending), and calculate importance score
         group_scores = []
         for group_id, group_data in memories_by_group.items():
-            # Sort memories by timestamp
-            group_data['memories'].sort(
-                key=lambda m: m.timestamp if m.timestamp else ''
-            )
+            # Sort memories by relevance score (higher score = more relevant)
+            # Zip memories with their scores, sort by score, then unzip
+            memories_with_scores = list(zip(group_data['memories'], group_data['scores']))
+            memories_with_scores.sort(key=lambda x: x[1], reverse=True)
+            
+            # Update memories and scores in sorted order
+            group_data['memories'] = [m for m, _ in memories_with_scores]
+            group_data['scores'] = [s for _, s in memories_with_scores]
 
             # Calculate importance score
             importance_score = self._calculate_importance_score(
